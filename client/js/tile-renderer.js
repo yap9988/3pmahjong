@@ -1,3 +1,10 @@
+// client/js/tile-renderer.js
+// Neutral tile visuals: all tiles rendered like baiban (white).
+// Prevents "big fat" white border and small tile image by:
+// - removing outer padding/border on container (.tile)
+// - placing any thin frame on the <img> itself with box-sizing:border-box
+// - ensuring image fills container
+
 class TileRenderer {
 
     createTileElement(tile, isClickable = false) {
@@ -11,54 +18,63 @@ class TileRenderer {
         const tileName = this.getTileFullName(tile);
         tileDiv.title = tileName;
 
-        // Apply styling based on tile type
+        // Apply styling based on tile type (container)
         this.applyTileStyle(tileDiv, tile);
 
-        // Add content: try image first, fallback to textual content
+        // Add content: use an <img> that fills the container. Border goes on the image (box-sizing:border-box)
         const img = document.createElement('img');
         img.alt = tileName;
+
+        // Make image fill the tile container exactly
+        img.style.display = 'block';
         img.style.width = '100%';
         img.style.height = '100%';
-        img.style.objectFit = 'contain';
-        img.style.display = 'block';
+        img.style.objectFit = 'cover'; // cover so image fills; change to 'contain' if you prefer letterbox
         img.style.borderRadius = '6px';
 
+        // Put the thin frame (if desired) on the image itself and include it in the image size
+        // Use a subtle 1px or 2px border — it will not shrink the inner image thanks to box-sizing
+        img.style.boxSizing = 'border-box';
+        img.style.border = '1px solid rgba(0,0,0,0.08)'; // subtle frame; change to '#FFFFFF' if you want white frame
+
         // Compute image path from tile.id (normalize to safe filename)
-        const safeFileName = this.getTileImageFileName(tile); // implemented below
+        const safeFileName = this.getTileImageFileName(tile);
         img.src = `/assets/tiles/${safeFileName}`;
 
         // If image fails to load, fallback to text
         img.onerror = () => {
-            // remove broken image and insert text/content
             if (img.parentNode) img.parentNode.removeChild(img);
-            tileDiv.innerHTML = this.getTileTextContent(tile);
-            this.addSpecialIndicators(tileDiv, tile); // keep badges
+            // Insert fallback content without extra padding so size stays consistent
+            const fallback = document.createElement('div');
+            fallback.style.width = '100%';
+            fallback.style.height = '100%';
+            fallback.style.display = 'flex';
+            fallback.style.alignItems = 'center';
+            fallback.style.justifyContent = 'center';
+            fallback.style.fontSize = '20px';
+            fallback.style.boxSizing = 'border-box';
+            fallback.innerHTML = this.getTileTextContent(tile);
+            tileDiv.appendChild(fallback);
+            this.addSpecialIndicators(tileDiv, tile);
         };
 
         tileDiv.appendChild(img);
 
-        // Add special indicators (badges)
+        // Add special indicators (kept minimal / removed colored badges)
         this.addSpecialIndicators(tileDiv, tile);
 
         return tileDiv;
     }
 
-
     // Helper: create a safe filename from tile.id or tile properties
     getTileImageFileName(tile) {
-        // Prefer explicit image field if tile.imagePath exists
         if (tile.imagePath) {
-            // tile.imagePath might be like 'tiles/D1_0.png' or full path
             return tile.imagePath.split('/').pop();
         }
-
-        // fallback naming from tile.id:
-        // Replace any non-alphanumeric with underscore
         const raw = tile.id || `${tile.type}-${tile.value}`;
         const filename = raw.replace(/[^a-zA-Z0-9]/g, '_') + '.png';
         return filename;
     }
-
 
     // Fallback textual content (used when image missing)
     getTileTextContent(tile) {
@@ -67,189 +83,73 @@ class TileRenderer {
         }
 
         if (tile.isBonus) {
-            let content = `<div>${tile.display}</div>`;
-            if (tile.value && typeof tile.value === 'number') {
-                content += `<div style="font-size: 12px; position: absolute; bottom: 2px; right: 2px;">${tile.value}</div>`;
-            }
-            return content;
+            // If you want bonus tiles to be neutral too, return tile.display only.
+            return `<div>${tile.display}</div>`;
         }
 
+        // Regular tiles (neutral baiban look)
         return `<div>${tile.display}</div>`;
     }
 
-    
     getTileFullName(tile) {
-        if (tile.isWild) return '飛 (Wild Card) - Can be any tile';
+        if (tile.isWild) return '飛 (Wild Card)';
         if (tile.isBonus) {
-            const bonusNames = {
-                'season': 'Season',
-                'flower': 'Flower', 
-                'animal': 'Animal',
-                'face': 'Face'
-            };
+            const bonusNames = { 'season': 'Season', 'flower': 'Flower', 'animal': 'Animal', 'face': 'Face' };
             return `${tile.display} (${bonusNames[tile.bonusType] || 'Bonus'})`;
         }
         return `${tile.display} (${tile.chinese || ''})`;
     }
-    
+
     applyTileStyle(tileDiv, tile) {
-        // Base styles
+        // Base container styles. Make sure there's NO padding which would shrink image space.
         tileDiv.style.display = 'inline-block';
-        tileDiv.style.width = '50px';
-        tileDiv.style.height = '70px';
+        tileDiv.style.width = '50px';   // control tile size here
+        tileDiv.style.height = '70px';  // control tile size here
         tileDiv.style.margin = '5px';
+        tileDiv.style.padding = '0';     // important: no padding
         tileDiv.style.borderRadius = '8px';
-        tileDiv.style.textAlign = 'center';
-        tileDiv.style.lineHeight = '70px';
+        tileDiv.style.boxSizing = 'border-box';
         tileDiv.style.fontWeight = 'bold';
         tileDiv.style.fontSize = '18px';
         tileDiv.style.cursor = 'pointer';
-        tileDiv.style.boxShadow = '2px 2px 5px rgba(0,0,0,0.3)';
-        tileDiv.style.transition = 'transform 0.2s';
+        tileDiv.style.boxShadow = '2px 2px 5px rgba(0,0,0,0.12)';
         tileDiv.style.position = 'relative';
-        
-        // Color coding by tile type
-        if (tile.isWild) {
-            // Wild cards - special styling
-            tileDiv.style.background = 'linear-gradient(135deg, #9C27B0, #7B1FA2)';
-            tileDiv.style.color = '#FFFFFF';
-            tileDiv.style.border = '3px dashed #FFEB3B';
-            tileDiv.style.fontSize = '24px';
-        } else if (tile.isBonus) {
-            // Bonus tiles - different colors by type
-            const bonusColors = {
-                'season': '#4CAF50',    // Green for seasons
-                'flower': '#2196F3',    // Blue for flowers
-                'animal': '#FF9800',    // Orange for animals
-                'face': '#E91E63'       // Pink for faces
-            };
-            tileDiv.style.background = bonusColors[tile.bonusType] || '#9E9E9E';
-            tileDiv.style.color = '#FFFFFF';
-            tileDiv.style.border = '2px solid #FFFFFF';
-        } else if (tile.type === 'dot') {
-            // Dots
-            tileDiv.style.background = '#FFFFFF';
-            tileDiv.style.color = '#000000';
-            tileDiv.style.border = '2px solid #333333';
-        } else if (tile.type === 'dragon') {
-            // Dragons
-            const dragonColors = {
-                'Red': '#F44336',
-                'Green': '#4CAF50', 
-                'White': '#FFFFFF'
-            };
-            tileDiv.style.background = dragonColors[tile.value] || '#9C27B0';
-            tileDiv.style.color = tile.value === 'White' ? '#000000' : '#FFFFFF';
-            tileDiv.style.border = `2px solid ${dragonColors[tile.value] || '#7B1FA2'}`;
-        } else if (tile.type === 'wind') {
-            // Winds
-            tileDiv.style.background = 'linear-gradient(135deg, #FFEB3B, #FBC02D)';
-            tileDiv.style.color = '#000000';
-            tileDiv.style.border = '2px solid #FF9800';
-            
-            // Special highlight for North wind
-            if (tile.value === 'North') {
-                tileDiv.style.border = '3px solid #2196F3';
-            }
-        }
-        
-        // Hover effect
-        tileDiv.addEventListener('mouseenter', () => {
-            tileDiv.style.transform = 'translateY(-5px) scale(1.05)';
-            tileDiv.style.zIndex = '10';
-        });
-        
-        tileDiv.addEventListener('mouseleave', () => {
-            tileDiv.style.transform = 'translateY(0) scale(1)';
-            tileDiv.style.zIndex = '1';
-        });
+        tileDiv.style.overflow = 'hidden';
+        tileDiv.style.background = '#FFFFFF'; // neutral white background for baiban look
+        tileDiv.style.color = '#000000';
+        tileDiv.style.border = 'none'; // no outer border on container; border placed on image
     }
-    
+
     getTileContent(tile) {
         if (tile.isWild) {
             return '<div style="font-size: 28px;">飛</div>';
         }
-        
-        // For bonus tiles, show both symbol and number if applicable
         if (tile.isBonus) {
-            let content = `<div>${tile.display}</div>`;
-            if (tile.value && typeof tile.value === 'number') {
-                content += `<div style="font-size: 12px; position: absolute; bottom: 2px; right: 2px;">${tile.value}</div>`;
-            }
-            return content;
+            return `<div>${tile.display}</div>`;
         }
-        
-        // Regular tiles
         return `<div>${tile.display}</div>`;
     }
-    
+
     addSpecialIndicators(tileDiv, tile) {
-        // Add wild card indicator
-        if (tile.isWild) {
-            const wildBadge = document.createElement('div');
-            wildBadge.style.position = 'absolute';
-            wildBadge.style.top = '2px';
-            wildBadge.style.right = '2px';
-            wildBadge.style.background = '#FFEB3B';
-            wildBadge.style.color = '#000000';
-            wildBadge.style.fontSize = '10px';
-            wildBadge.style.padding = '1px 4px';
-            wildBadge.style.borderRadius = '3px';
-            //wildBadge.textContent = 'W';
-            //wildBadge.title = 'Wild Card';
-            tileDiv.appendChild(wildBadge);
-        }
-        
-        // Add bonus tile indicator
+        // Remove colored badges/indicators for winds/dragons/wilds.
+        // If you want to show a subtle non-colored badge for some rules, add it here.
         if (tile.isBonus) {
             const bonusBadge = document.createElement('div');
             bonusBadge.style.position = 'absolute';
-            bonusBadge.style.top = '2px';
-            bonusBadge.style.left = '2px';
-            bonusBadge.style.background = '#FFFFFF';
-            bonusBadge.style.color = '#000000';
+            bonusBadge.style.top = '4px';
+            bonusBadge.style.left = '4px';
+            bonusBadge.style.background = 'rgba(255,255,255,0.9)';
+            bonusBadge.style.color = '#000';
             bonusBadge.style.fontSize = '10px';
             bonusBadge.style.padding = '1px 4px';
             bonusBadge.style.borderRadius = '3px';
-            //bonusBadge.textContent = 'B';
-            //bonusBadge.title = 'Bonus Tile';
+            bonusBadge.textContent = 'B';
+            bonusBadge.title = 'Bonus Tile';
             tileDiv.appendChild(bonusBadge);
         }
-        
-        // Add North wind indicator (special 1-fan for all)
-        if (tile.type === 'wind' && tile.value === 'North') {
-            const northBadge = document.createElement('div');
-            northBadge.style.position = 'absolute';
-            northBadge.style.bottom = '2px';
-            northBadge.style.left = '2px';
-            northBadge.style.background = '#2196F3';
-            northBadge.style.color = '#FFFFFF';
-            northBadge.style.fontSize = '10px';
-            northBadge.style.padding = '1px 4px';
-            northBadge.style.borderRadius = '3px';
-            //northBadge.textContent = 'N';
-            //northBadge.title = 'North Wind (1 fan for all)';
-            tileDiv.appendChild(northBadge);
-        }
-        
-        // Add East wind indicator (2 fans for East player)
-        if (tile.type === 'wind' && tile.value === 'East') {
-            const eastBadge = document.createElement('div');
-            eastBadge.style.position = 'absolute';
-            eastBadge.style.bottom = '2px';
-            eastBadge.style.right = '2px';
-            eastBadge.style.background = '#4CAF50';
-            eastBadge.style.color = '#FFFFFF';
-            eastBadge.style.fontSize = '10px';
-            eastBadge.style.padding = '1px 4px';
-            eastBadge.style.borderRadius = '3px';
-            //eastBadge.textContent = 'E²';
-            //eastBadge.title = 'East Wind (2 fans for East player)';
-            tileDiv.appendChild(eastBadge);
-        }
     }
-    
-    // Create bonus tiles display
+
+    // Bonus tiles display (keeps small tiles consistent)
     createBonusTileDisplay(bonusTiles) {
         const container = document.createElement('div');
         container.className = 'bonus-tiles-container';
@@ -257,15 +157,15 @@ class TileRenderer {
         container.style.flexWrap = 'wrap';
         container.style.gap = '5px';
         container.style.margin = '10px 0';
-        container.style.padding = '10px';
-        container.style.background = 'rgba(255, 255, 255, 0.1)';
+        container.style.padding = '6px 0';
+        container.style.background = 'transparent';
         container.style.borderRadius = '8px';
-        
+
         if (!bonusTiles || bonusTiles.length === 0) {
             container.innerHTML = '<div style="color: #ccc;">No bonus tiles</div>';
             return container;
         }
-        
+
         bonusTiles.forEach(tile => {
             const tileElement = this.createTileElement(tile);
             tileElement.style.width = '40px';
@@ -273,11 +173,11 @@ class TileRenderer {
             tileElement.style.fontSize = '14px';
             container.appendChild(tileElement);
         });
-        
+
         return container;
     }
-    
-    // Create wild card declaration interface
+
+    // Wild card declaration UI: neutral buttons for winds/dragons/dots
     createWildCardDeclarationInterface(wildCard, onDeclare) {
         const container = document.createElement('div');
         container.className = 'wild-card-declaration';
@@ -287,80 +187,77 @@ class TileRenderer {
         container.style.transform = 'translate(-50%, -50%)';
         container.style.background = 'rgba(0, 0, 0, 0.9)';
         container.style.padding = '30px';
-        container.style.borderRadius = '15px';
+        container.style.borderRadius = '12px';
         container.style.zIndex = '1000';
-        container.style.border = '3px solid #FFEB3B';
-        container.style.minWidth = '300px';
-        
-        // Show the wild card
+        container.style.border = '2px solid rgba(255,255,255,0.08)';
+        container.style.minWidth = '320px';
+
         const wildCardDisplay = this.createTileElement(wildCard);
-        wildCardDisplay.style.margin = '0 auto 20px';
+        wildCardDisplay.style.margin = '0 auto 16px';
         wildCardDisplay.style.display = 'block';
         container.appendChild(wildCardDisplay);
-        
-        // Title
+
         const title = document.createElement('h3');
         title.textContent = 'Declare Wild Card As:';
-        title.style.color = '#FFEB3B';
+        title.style.color = '#fff';
         title.style.textAlign = 'center';
-        title.style.marginBottom = '20px';
+        title.style.marginBottom = '12px';
         container.appendChild(title);
-        
-        // Declaration options
+
         const optionsContainer = document.createElement('div');
         optionsContainer.style.display = 'grid';
         optionsContainer.style.gridTemplateColumns = 'repeat(3, 1fr)';
-        optionsContainer.style.gap = '10px';
-        optionsContainer.style.marginBottom = '20px';
-        
-        // Dots 1-9
+        optionsContainer.style.gap = '8px';
+        optionsContainer.style.marginBottom = '12px';
+
+        // Dots 1-9 (neutral)
         for (let i = 1; i <= 9; i++) {
             const option = document.createElement('button');
             option.textContent = `${i}筒`;
-            option.style.padding = '10px';
-            option.style.background = '#FFFFFF';
-            option.style.color = '#000000';
-            option.style.border = '2px solid #333';
-            option.style.borderRadius = '5px';
+            option.style.padding = '8px';
+            option.style.background = '#fff';
+            option.style.color = '#000';
+            option.style.border = '1px solid rgba(0,0,0,0.15)';
+            option.style.borderRadius = '6px';
             option.style.cursor = 'pointer';
             option.onclick = () => onDeclare('dot', i);
             optionsContainer.appendChild(option);
         }
-        
-        // Winds
+
+        // Winds (neutral)
         const winds = ['東', '南', '西', '北'];
         const windValues = ['East', 'South', 'West', 'North'];
         winds.forEach((wind, index) => {
             const option = document.createElement('button');
             option.textContent = wind;
-            option.style.padding = '10px';
-            option.style.background = '#FFEB3B';
-            option.style.color = '#000000';
-            option.style.border = '2px solid #FF9800';
-            option.style.borderRadius = '5px';
+            option.style.padding = '8px';
+            option.style.background = '#fff';
+            option.style.color = '#000';
+            option.style.border = '1px solid rgba(0,0,0,0.15)';
+            option.style.borderRadius = '6px';
             option.style.cursor = 'pointer';
             option.onclick = () => onDeclare('wind', windValues[index]);
             optionsContainer.appendChild(option);
         });
-        
-        // Dragons
+
+        // Dragons (neutral)
         const dragons = ['中', '發', '白'];
         const dragonValues = ['Red', 'Green', 'White'];
         dragons.forEach((dragon, index) => {
             const option = document.createElement('button');
             option.textContent = dragon;
-            option.style.padding = '10px';
-            option.style.background = dragon === '白' ? '#FFFFFF' : '#4CAF50';
-            option.style.color = dragon === '白' ? '#000000' : '#FFFFFF';
-            option.style.border = `2px solid ${dragon === '白' ? '#333' : '#2E7D32'}`;
-            option.style.borderRadius = '5px';
+            option.style.padding = '8px';
+            option.style.background = '#fff';
+            option.style.color = '#000';
+            option.style.border = '1px solid rgba(0,0,0,0.15)';
+            option.style.borderRadius = '6px';
             option.style.cursor = 'pointer';
             option.onclick = () => onDeclare('dragon', dragonValues[index]);
             optionsContainer.appendChild(option);
         });
-        
+
         container.appendChild(optionsContainer);
-        
+
         // Cancel button
         const cancelBtn = document.createElement('button');
         cancelBtn.textContent = 'Cancel';
@@ -368,12 +265,12 @@ class TileRenderer {
         cancelBtn.style.background = '#f44336';
         cancelBtn.style.color = 'white';
         cancelBtn.style.border = 'none';
-        cancelBtn.style.borderRadius = '5px';
+        cancelBtn.style.borderRadius = '6px';
         cancelBtn.style.cursor = 'pointer';
         cancelBtn.style.width = '100%';
         cancelBtn.onclick = () => container.remove();
         container.appendChild(cancelBtn);
-        
+
         return container;
     }
 }

@@ -55,22 +55,27 @@ class MalaysiaMahjong3P {
     // Replace bonus tiles immediately after dealing
     replaceBonusTiles(player) {
         const bonusTiles = player.hand.filter(tile => tile.isBonus);
+
+        if (!player.bonusTiles) player.bonusTiles = [];
         
         bonusTiles.forEach(bonusTile => {
             // Remove bonus tile from hand
-            const index = player.hand.indexOf(bonusTile);
+            const index = player.hand.findIndex(t => t.id === bonusTile.id);
             if (index !== -1) {
                 player.hand.splice(index, 1);
+
+                player.bonusTiles.push(bonusTile);
                 
                 // Draw replacement from dummy wall
                 if (this.wallManager.getDummyWallCount() > 0) {
                     const replacement = this.wallManager.drawFromDummyWall();
+                    if (!replacement) {
+                        throw new Error('No replacement tile available after removing bonus tile');
+                    }
                     player.hand.push(replacement);
                     console.log(`Game: Replaced bonus ${bonusTile.display} with ${replacement.display} for ${player.name}`);
-                    
-                    // Add bonus tile to player's bonus collection
-                    if (!player.bonusTiles) player.bonusTiles = [];
-                    player.bonusTiles.push(bonusTile);
+                } else {
+                    console.warn('Game: Dummy wall empty while replacing bonus tile');
                 }
             }
         });

@@ -190,6 +190,12 @@ class TileManager {
                 playerTiles[playerIndex].push(...tilesForPlayer);
             }
         }
+
+        // Give dealer (East, index 0) one extra tile to make 14 tiles
+        const extraForEast = tiles.splice(0, 1);
+        if (extraForEast.length > 0) {
+            playerTiles[0].push(extraForEast[0]);
+        }
         
         // Remaining tiles become dummy wall
         const dummyWall = [...tiles];

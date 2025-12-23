@@ -16,16 +16,29 @@ class WallManager {
             throw new Error('No tiles left in dummy wall');
         }
         
-        const tile = this.dummyWall.pop();
+        let tile = this.dummyWall.pop();
         
-        // Check if it's a bonus tile (needs replacement)
-        if (tile.isBonus && this.replacementWall.length > 0) {
-            const replacement = this.replacementWall.pop();
-            console.log(`WallManager: Bonus ${tile.display} drawn, replaced with ${replacement.display}`);
-            return replacement;
+        // If popped tile is a bonus, move it to replacementWall and keep popping
+        while (tile && tile.isBonus) {
+            this.replacementWall.push(tile);
+            console.log(`WallManager: Bonus tile ${tile.display} popped from back and set aside`);
+            if (this.dummyWall.length === 0) {
+                // No more tiles to draw
+                tile = null;
+                break;
+            }
+            tile = this.dummyWall.pop();
+        }
+        if (!tile) {
+            throw new Error('No non-bonus replacement tile available in dummy wall');
         }
         
         return tile;
+    }
+
+    // If needed later, you can expose the stored bonus tiles via a getter:
+    getReplacementBonuses() {
+        return this.replacementWall.slice();
     }
     
     replaceBonusTile(bonusTile) {

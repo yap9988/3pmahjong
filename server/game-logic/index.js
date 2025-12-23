@@ -33,6 +33,11 @@ class MalaysiaMahjong3P {
         
         // 3. Setup walls and deal (Malaysian 3P: 4-4-4-1 pattern)
         const { playerTiles, dummyWall } = this.tileManager.setupMalaysian3PWalls(shuffledTiles);
+
+
+        // IMPORTANT: initialize the dummy wall BEFORE replacing bonus tiles so replacements
+        // can be drawn from the back of the wall.
+        this.wallManager.initializeDummyWall(dummyWall);
         
         // 4. Assign hands to players and sort
         playerTiles.forEach((tiles, index) => {
@@ -43,6 +48,8 @@ class MalaysiaMahjong3P {
             // Check for bonus tiles that need immediate replacement
             this.replaceBonusTiles(player);
         });
+
+
         
         // 5. Initialize dummy wall
         this.wallManager.initializeDummyWall(dummyWall);

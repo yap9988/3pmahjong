@@ -314,7 +314,6 @@ class UIManager {
 
 
     
-    // Game display
     updateGameDisplay(data) {
         this.setElementText('dummyWallCount', data.dummyWallCount);
         
@@ -341,19 +340,121 @@ class UIManager {
             }
         }
 
-        // Update bonus tiles display
-        if (data.bonusTiles && data.bonusTiles[this.gameManager.playerId]) {
-            this.updateBonusTilesDisplay(
-                this.gameManager.playerId,
-                data.bonusTiles[this.gameManager.playerId]
-            );
+        // Update bonus tiles display FOR ALL PLAYERS
+        // Create / update a container that lists each player's bonus tiles with a label.
+        if (data.bonusTiles && players && players.length > 0) {
+            // Ensure parent container exists
+            let parent = document.getElementById('bonusTilesDisplay');
+            if (!parent) {
+                const gameScreen = document.getElementById('game');
+                if (gameScreen) {
+                    parent = document.createElement('div');
+                    parent.id = 'bonusTilesDisplay';
+                    parent.style.margin = '10px 0';
+                    parent.style.padding = '10px';
+                    parent.style.background = 'rgba(255, 255, 255, 0.03)';
+                    parent.style.borderRadius = '8px';
+                    parent.innerHTML = '<h4>Bonus Tiles (by player)</h4>';
+                    gameScreen.insertBefore(parent, gameScreen.querySelector('.section:last-child'));
+                }
+            }
+
+            // Clear existing per-player displays but keep title
+            if (parent) {
+                const title = parent.querySelector('h4') || document.createElement('h4');
+                title.textContent = 'Bonus Tiles (by player)';
+                parent.innerHTML = '';
+                parent.appendChild(title);
+
+                // For each player, render their bonus tiles
+                players.forEach(p => {
+                    const bonusForPlayer = (data.bonusTiles && data.bonusTiles[p.id]) ? data.bonusTiles[p.id] : [];
+                    const playerDiv = document.createElement('div');
+                    playerDiv.id = `bonus-${p.id}`;
+                    playerDiv.style.marginTop = '8px';
+                    playerDiv.style.padding = '6px';
+                    playerDiv.style.borderTop = '1px solid rgba(255,255,255,0.04)';
+                    playerDiv.style.display = 'flex';
+                    playerDiv.style.alignItems = 'center';
+                    playerDiv.style.gap = '12px';
+
+                    const nameSpan = document.createElement('div');
+                    nameSpan.style.minWidth = '160px';
+                    nameSpan.style.fontWeight = '600';
+                    nameSpan.style.color = '#fff';
+                    // use full name, and show (You) if it's the local player
+                    const displayName = (p.id === this.gameManager.playerId) ? `${p.name} (You)` : p.name;
+                    nameSpan.textContent = `${displayName} — ${p.seatWind || ''}`;
+
+                    // render bonus tiles
+                    const bonusDisplay = this.tileRenderer.createBonusTileDisplay(bonusForPlayer);
+                    bonusDisplay.style.display = 'flex';
+                    bonusDisplay.style.flexWrap = 'wrap';
+                    bonusDisplay.style.gap = '6px';
+
+                    playerDiv.appendChild(nameSpan);
+                    playerDiv.appendChild(bonusDisplay);
+
+                    parent.appendChild(playerDiv);
+                });
+            }
         }
-        
+
         // Update dummy wall count
         this.updateDummyWallCount(data.dummyWallCount);
-
-
     }
+
+    // Update a single player's bonus tiles (keeps compatibility if called individually)
+    updateBonusTilesDisplay(playerId, bonusTiles) {
+        // Ensure parent exists
+        let parent = document.getElementById('bonusTilesDisplay');
+        if (!parent) {
+            const gameScreen = document.getElementById('game');
+            if (gameScreen) {
+                parent = document.createElement('div');
+                parent.id = 'bonusTilesDisplay';
+                parent.style.margin = '10px 0';
+                parent.style.padding = '10px';
+                parent.style.background = 'rgba(255, 255, 255, 0.03)';
+                parent.style.borderRadius = '8px';
+                parent.innerHTML = '<h4>Bonus Tiles (by player)</h4>';
+                gameScreen.insertBefore(parent, gameScreen.querySelector('.section:last-child'));
+            }
+        }
+
+        // Find player container (if exists) or create it
+        let playerDiv = document.getElementById(`bonus-${playerId}`);
+        if (!playerDiv) {
+            playerDiv = document.createElement('div');
+            playerDiv.id = `bonus-${playerId}`;
+            playerDiv.style.marginTop = '8px';
+            playerDiv.style.padding = '6px';
+            playerDiv.style.borderTop = '1px solid rgba(255,255,255,0.04)';
+            playerDiv.style.display = 'flex';
+            playerDiv.style.alignItems = 'center';
+            playerDiv.style.gap = '12px';
+            parent.appendChild(playerDiv);
+        } else {
+            playerDiv.innerHTML = ''; // refresh
+        }
+
+        const playerObj = this.gameManager.players.find(p => p.id === playerId) || { name: 'Unknown', seatWind: '' };
+        const nameSpan = document.createElement('div');
+        nameSpan.style.minWidth = '160px';
+        nameSpan.style.fontWeight = '600';
+        nameSpan.style.color = '#fff';
+        const displayName = (playerId === this.gameManager.playerId) ? `${playerObj.name} (You)` : playerObj.name;
+        nameSpan.textContent = `${displayName} — ${playerObj.seatWind || ''}`;
+
+        const bonusDisplay = this.tileRenderer.createBonusTileDisplay(bonusTiles);
+        bonusDisplay.style.display = 'flex';
+        bonusDisplay.style.flexWrap = 'wrap';
+        bonusDisplay.style.gap = '6px';
+
+        playerDiv.appendChild(nameSpan);
+        playerDiv.appendChild(bonusDisplay);
+    }
+
 
     // Add to UIManager class:
     showWildCardDeclaration(wildCard, onDeclareCallback) {

@@ -1,0 +1,345 @@
+const express = require('express');
+const http = require('http');
+const socketIo = require('socket.io');
+const path = require('path');
+
+const app = express();
+const server = http.createServer(app);
+const io = socketIo(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
+
+const PORT = process.env.PORT || 3002;
+
+// Import managers
+const RoomManager = require('./room-manager');
+const roomManager = new RoomManager();
+
+// Serve static files from client directory
+app.use(express.static(path.join(__dirname, '../client')));
+
+// Serve index.html for root route
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/index.html'));
+});
+
+// Handle Socket.io connections
+io.on('connection', (socket) => {
+    console.log('👤 Client connected:', socket.id);
+
+    // Create room
+    socket.on('createRoom', (data) => {
+        const { playerName } = data;
+        const roomId = 'ROOM-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+        
+        const player = {
+            id: socket.id,
+            name: playerName || `Player_${socket.id.substring(0, 4)}`,
+            isHost: true
+        };
+        
+        const room = roomManager.createRoom(roomId, player, socket.id);
+        socket.join(roomId);
+        
+        socket.emit('roomCreated', {
+            roomId,
+            player: player,
+            players: room.players,
+            isHost: true
+        });
+        
+        console.log(`✅ Room ${roomId} created by ${player.name}`);
+    });
+
+    // Join room
+    socket.on('joinRoom', (data) => {
+        const { roomId, playerName } = data;
+    
+        const room = roomManager.getRoom(roomId);
+
+        if (!room) {
+            socket.emit('error', { message: 'Room not found' });
+            console.log(`❌ Room ${roomId} not found`);
+            return;
+        }
+        
+        if (room.status !== 'waiting') {
+            socket.emit('error', { message: 'Game already in progress' });
+            return;
+        }
+        
+        if (room.players.length >= 3) {
+            socket.emit('error', { message: 'Room is full (3 players max)' });
+            return;
+        }
+        
+        const player = {
+            id: socket.id,
+            name: playerName || `Player_${socket.id.substring(0, 4)}`,
+            isHost: false
+        };
+        
+        //const updatedRoom = roomManager.joinRoom(roomId, player);
+        const updatedRoom = roomManager.joinRoom(roomId, player, io);
+        socket.join(roomId);
+        
+        // Send to joining player
+        socket.emit('joinedRoom', {
+            roomId,
+            player: player,
+            players: updatedRoom.players,
+            playerCount: updatedRoom.players.length,
+            isHost: false,
+            hostId: updatedRoom.host
+        });
+        
+        // Notify everyone in the room
+        //io.to(roomId).emit('playerJoined', {
+        //    player: player,
+        //    players: updatedRoom.players
+        //});
+        
+        console.log(`✅ ${player.name} joined ${roomId}. Players: ${updatedRoom.players.length}/3`);
+    });
+
+    // Start game
+    socket.on('startGame', (roomId) => {
+        const { canStart, error, room } = roomManager.canStartGame(roomId, socket.id);
+        
+        if (!canStart) {
+            socket.emit('error', { message: error });
+            return;
+        }
+        
+        console.log(`🎮 Starting game in ${roomId}...`);
+        
+        // Initialize game
+        const MalaysiaMahjong3P = require('./game-logic');
+        room.game = new MalaysiaMahjong3P();
+        room.status = 'playing';
+        
+        // Initialize game with players
+        const gameState = room.game.initializeGame(room.players);
+
+
+        // In the startGame handler, before emitting:
+        console.log('📤 DEBUG: Sending gameStarted to room', roomId);
+        console.log('Game state to send:', {
+            ...gameState,
+            roomId,
+            players: room.players.map(p => ({
+                id: p.id,
+                name: p.name,
+                isHost: p.id === room.host,
+                seatWind: room.game.turnManager.getPlayerWind(p.id)
+            }))
+        });
+
+        
+        // Send game started event to all players
+        io.to(roomId).emit('gameStarted', {
+            ...gameState,
+            roomId,
+            players: room.players.map(p => ({
+                id: p.id,
+                name: p.name,
+                isHost: p.id === room.host,
+                seatWind: room.game.turnManager.getPlayerWind(p.id)
+            }))
+        });
+        
+        console.log(`✅ Game started in ${roomId}`);
+    });
+
+    // Game actions
+    const handleGameAction = (action, roomId, data, callback) => {
+        const room = roomManager.getRoom(roomId);
+        if (!room || !room.game) {
+            socket.emit('error', { message: 'Game not found' });
+            return;
+        }
+        
+        try {
+            const result = room.game[action](socket.id, data);
+            if (result.error) {
+                socket.emit('error', result);
+            } else {
+                callback(result);
+            }
+        } catch (error) {
+            console.error('Game action error:', error);
+            socket.emit('error', { message: 'Game action failed' });
+        }
+    };
+
+    // Draw tile
+    socket.on('drawTile', (roomId) => {
+        const room = roomManager.getRoom(roomId);
+        if (!room || !room.game) return;
+        
+        const result = room.game.drawTile(socket.id);
+        if (result.error) {
+            socket.emit('error', result);
+            return;
+        }
+        
+        socket.emit('tileDrawn', result);
+        socket.to(roomId).emit('playerDrewTile', {
+            playerId: socket.id,
+            dummyWallCount: result.dummyWallCount
+        });
+    });
+
+    // Discard tile
+    socket.on('discardTile', (data) => {
+        const { roomId, tileId } = data;
+        const room = roomManager.getRoom(roomId);
+        if (!room || !room.game) return;
+        
+        const result = room.game.discardTile(socket.id, tileId);
+        if (result.error) {
+            socket.emit('error', result);
+            return;
+        }
+        
+        io.to(roomId).emit('tileDiscarded', {
+            playerId: socket.id,
+            tile: result.discardedTile,
+            currentPlayer: result.currentPlayer,
+            currentPlayerWind: result.currentPlayerWind,
+            discarderWind: result.discarderWind
+        });
+        
+        socket.emit('handUpdated', { hand: result.playerHand });
+    });
+
+    // Declare Pung
+    socket.on('declarePung', (data) => {
+        const { roomId, tileId } = data;
+        const room = roomManager.getRoom(roomId);
+        if (!room || !room.game) return;
+        
+        const result = room.game.declarePung(socket.id, tileId);
+        if (result.error) {
+            socket.emit('error', result);
+            return;
+        }
+        
+        io.to(roomId).emit('pungDeclared', {
+            playerId: socket.id,
+            meld: result.meld,
+            currentPlayer: result.currentPlayer,
+            currentPlayerWind: result.currentPlayerWind,
+            fan: result.fan,
+            message: result.message
+        });
+        
+        socket.emit('handUpdated', { hand: result.hand });
+    });
+
+    // Declare Win
+    socket.on('declareWin', (roomId) => {
+        const room = roomManager.getRoom(roomId);
+        if (!room || !room.game) return;
+        
+        const result = room.game.checkWin(socket.id);
+        if (result.error) {
+            socket.emit('error', result);
+            return;
+        }
+        
+        if (result.win) {
+            room.status = 'ended';
+            io.to(roomId).emit('gameWon', result);
+            console.log(`🎉 Game won in ${roomId}: ${result.message}`);
+        }
+    });
+
+    // Get room state
+    socket.on('getRoomState', (roomId) => {
+        const state = roomManager.getRoomState(roomId);
+        if (!state) {
+            socket.emit('error', { message: 'Room not found' });
+            return;
+        }
+        
+        socket.emit('roomState', state);
+    });
+
+    // Disconnect
+    // In the disconnect handler, update the playerLeft emission:
+    // In your server.js disconnect handler, replace this section:
+    socket.on('disconnect', () => {
+        console.log('👋 Client disconnected:', socket.id);
+    
+        // ✅ FIX: Use roomManager to handle disconnection
+        // We need to find which room the player was in first
+        let roomIdToUpdate = null;
+        let playerName = null;
+    
+        // First, find which room the player was in
+        for (const [roomId, room] of roomManager.rooms) {
+            const playerIndex = room.players.findIndex(p => p.id === socket.id);
+            if (playerIndex !== -1) {
+                playerName = room.players[playerIndex].name;
+                roomIdToUpdate = roomId;
+                break;
+            }
+        }
+    
+        if (!roomIdToUpdate) {
+            console.log('Player was not in any room');
+            return;
+        }
+    
+        // Remove player using roomManager
+        const updatedRoom = roomManager.leaveRoom(roomIdToUpdate, socket.id);
+    
+        if (!updatedRoom) {
+            console.log(`Room ${roomIdToUpdate} was deleted (empty)`);
+            return;
+        }
+    
+        console.log(`➖ ${playerName} left ${roomIdToUpdate}. Remaining: ${updatedRoom.players.length}/3`);
+    
+        // ✅ FIX: Broadcast updated player list to all remaining players
+        io.to(roomIdToUpdate).emit('playerListUpdated', {
+            players: updatedRoom.players,
+            playerCount: updatedRoom.players.length,
+            roomId: roomIdToUpdate
+        });
+    
+        // Also send individual notification
+        io.to(roomIdToUpdate).emit('playerLeft', {
+            playerId: socket.id,
+            playerName: playerName,
+            playerCount: updatedRoom.players.length
+        });
+    
+        // If host changed, the roomManager should have already updated it
+        // Check if we need to notify about new host
+        const room = roomManager.getRoom(roomIdToUpdate);
+        if (room && room.players.length > 0) {
+            const newHost = room.players.find(p => p.isHost);
+            if (newHost && newHost.id !== socket.id) {
+                // Host changed, notify players
+                io.to(roomIdToUpdate).emit('playerListUpdated', {
+                    players: room.players,
+                    playerCount: room.players.length,
+                    roomId: roomIdToUpdate
+                });
+            }
+        }
+    });
+
+
+
+});
+
+server.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`🎮 Malaysian 3-Player Mahjong Ready!`);
+});

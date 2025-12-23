@@ -127,6 +127,22 @@ class SocketManager {
         this.socket.on('error', (data) => {
             this.gameManager.onError(data);
         });
+
+
+
+        this.socket.on('bonusTilesUpdated', (data) => {
+            console.log('SocketManager: bonusTilesUpdated', data);
+            if (!data) return;
+
+            // data: { playerId, bonusTiles }
+            // Update UI for that player's bonus tiles
+            try {
+                this.gameManager.uiManager.updateBonusTilesDisplay(data.playerId, data.bonusTiles || []);
+            } catch (err) {
+                console.error('Error handling bonusTilesUpdated:', err);
+            }
+        });
+
     }
     
     // Emit methods

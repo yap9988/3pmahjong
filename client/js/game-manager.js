@@ -158,78 +158,59 @@ class GameManager {
         this.uiManager.showMessage('roomMessage', `Joined room ${data.roomId}`, 'success');
     }
     
+    // inside GameManager class
     onGameStarted(data) {
         console.log('🎮 onGameStarted called with data:', data);
-    
+
         this.gameActive = true;
-    
-        // Debug hand data
-        console.log('My player ID:', this.playerId);
-        console.log('Available hands:', Object.keys(data.hands || {}));
-        console.log('My hand data:', data.hands ? data.hands[this.playerId] : 'No hands');
-    
+
         this.setCurrentHand(data.hands[this.playerId] || []);
         this.setPlayers(data.players || []);
-    
-        console.log('Current hand set:', this.currentHand.length, 'tiles');
-        console.log('Players set:', this.players.length);
-    
-        // Try to force UI update
+
+        // go to game screen & render UI
         this.uiManager.showScreen('game');
-        console.log('Screen should be switched to game');
-    
         this.uiManager.updateGameDisplay(data);
-        console.log('Game display updated');
-    
         this.uiManager.renderCurrentHand(this.currentHand);
-        console.log('Hand rendered');
 
+        // --- Make tiles discardable if it's my turn (important for East's first-turn discard) ---
+        this.turnManager.updateTurnState(data.currentPlayer);
 
-        // Render bonus tiles for all players so everyone sees the removed flowers/seasons/etc.
-        if (data.bonusTiles) {
+        if (this.turnManager.isMyTurn) {
+            // enable clicking tiles to discard (covers both normal draws and the dealer-first discard)
+            this.uiManager.makeTilesDiscardable(this.currentHand, (tileId) => this.discardTile(tileId));
+        }
+
+        // --- Render bonus tiles for all players (labelled by player) ---
+        // Ensure data.bonusTiles exists and players are available
+        if (data.bonusTiles && Array.isArray(data.players)) {
             data.players.forEach(p => {
                 const bonusForPlayer = data.bonusTiles[p.id] || [];
                 this.uiManager.updateBonusTilesDisplay(p.id, bonusForPlayer);
             });
-            console.log('Bonus tiles updated for all players');
         }
 
-    
-        this.turnManager.updateTurnState(data.currentPlayer);
-
-
-        // If the server indicated it's the firstTurn (East discards), adapt UI:
+        // If firstTurn flag from server: disable draw button for dealer
         if (data.firstTurn) {
-            // If I'm the current player (dealer/East) disable draw and instruct to discard
             if (this.turnManager.isMyTurn) {
                 const drawBtn = document.getElementById('drawTileBtn');
                 if (drawBtn) drawBtn.disabled = true;
-
                 this.uiManager.showMessage('gameMessage', 'You are East and start with 14 tiles — please discard a tile (do not draw).', 'success');
             } else {
-                // If not the dealer, show a message that East will discard first
-                const dealer = data.currentPlayerName || 'Dealer';
-                this.uiManager.showMessage('gameMessage', `${dealer} (East) will discard first.`, 'info');
+                const dealerName = data.currentPlayerName || 'Dealer';
+                this.uiManager.showMessage('gameMessage', `${dealerName} (East) will discard first.`, 'info');
             }
         } else {
-            // Not first turn — normal flow (draw enabled/disabled handled by turnManager)
+            // normal flow
             const message = (this.turnManager.isMyTurn ? 'Your turn! Click Draw Tile.' : 'Waiting for turn...');
             this.uiManager.showMessage('gameMessage', message, 'success');
         }
 
-
-        console.log('Turn state updated');
-
-   
-        // Force a UI refresh/visual update if needed
+        // force refresh if needed
         setTimeout(() => {
-            try {
-                const gameEl = document.getElementById('game');
-                if (gameEl) gameEl.style.display = 'block';
-            } catch (e) { /* noop */ }
+            const gameEl = document.getElementById('game');
+            if (gameEl) gameEl.style.display = 'block';
         }, 100);
-    }
-    
+    }    
 
     
     onTileDrawn(data) {

@@ -167,13 +167,29 @@ io.on('connection', (socket) => {
             if (result.error) {
                 socket.emit('error', result);
             } else {
+                // Acknowledge caller
                 callback(result);
+
+                // Broadcast any relevant updates to the room
+                // 1) If the action produced bonus tiles for a player (initial replacements or draws),
+                //    inform everyone so they update per-player bonus tiles display.
+                if (result.bonusTiles) {
+                    io.to(roomId).emit('bonusTilesUpdated', {
+                        playerId: socket.id,
+                        bonusTiles: result.bonusTiles
+                    });
+                }
+
+                // 2) If the game state changed in other ways you want to broadcast, consider emitting
+                //    a compact update or the full game state here (optional).
+                // Example: io.to(roomId).emit('gameStateUpdated', room.game.getGameState());
             }
         } catch (error) {
             console.error('Game action error:', error);
             socket.emit('error', { message: 'Game action failed' });
         }
     };
+
 
     // Draw tile
     socket.on('drawTile', (roomId) => {

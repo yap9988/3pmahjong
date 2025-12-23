@@ -1,26 +1,82 @@
 class TileRenderer {
+
     createTileElement(tile, isClickable = false) {
         const tileDiv = document.createElement('div');
         tileDiv.className = 'tile';
         tileDiv.dataset.id = tile.id;
         tileDiv.dataset.type = tile.type;
         tileDiv.dataset.value = tile.value;
-        
+
         // Set title/tooltip
         const tileName = this.getTileFullName(tile);
         tileDiv.title = tileName;
-        
+
         // Apply styling based on tile type
         this.applyTileStyle(tileDiv, tile);
-        
-        // Add content
-        tileDiv.innerHTML = this.getTileContent(tile);
-        
-        // Add special indicators
+
+        // Add content: try image first, fallback to textual content
+        const img = document.createElement('img');
+        img.alt = tileName;
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.objectFit = 'contain';
+        img.style.display = 'block';
+        img.style.borderRadius = '6px';
+
+        // Compute image path from tile.id (normalize to safe filename)
+        const safeFileName = this.getTileImageFileName(tile); // implemented below
+        img.src = `/assets/tiles/${safeFileName}`;
+
+        // If image fails to load, fallback to text
+        img.onerror = () => {
+            // remove broken image and insert text/content
+            if (img.parentNode) img.parentNode.removeChild(img);
+            tileDiv.innerHTML = this.getTileTextContent(tile);
+            this.addSpecialIndicators(tileDiv, tile); // keep badges
+        };
+
+        tileDiv.appendChild(img);
+
+        // Add special indicators (badges)
         this.addSpecialIndicators(tileDiv, tile);
-        
+
         return tileDiv;
     }
+
+
+    // Helper: create a safe filename from tile.id or tile properties
+    getTileImageFileName(tile) {
+        // Prefer explicit image field if tile.imagePath exists
+        if (tile.imagePath) {
+            // tile.imagePath might be like 'tiles/D1_0.png' or full path
+            return tile.imagePath.split('/').pop();
+        }
+
+        // fallback naming from tile.id:
+        // Replace any non-alphanumeric with underscore
+        const raw = tile.id || `${tile.type}-${tile.value}`;
+        const filename = raw.replace(/[^a-zA-Z0-9]/g, '_') + '.png';
+        return filename;
+    }
+
+
+    // Fallback textual content (used when image missing)
+    getTileTextContent(tile) {
+        if (tile.isWild) {
+            return '<div style="font-size: 28px;">飛</div>';
+        }
+
+        if (tile.isBonus) {
+            let content = `<div>${tile.display}</div>`;
+            if (tile.value && typeof tile.value === 'number') {
+                content += `<div style="font-size: 12px; position: absolute; bottom: 2px; right: 2px;">${tile.value}</div>`;
+            }
+            return content;
+        }
+
+        return `<div>${tile.display}</div>`;
+    }
+
     
     getTileFullName(tile) {
         if (tile.isWild) return '飛 (Wild Card) - Can be any tile';

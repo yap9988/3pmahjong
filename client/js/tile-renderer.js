@@ -143,7 +143,7 @@ class TileRenderer {
             bonusBadge.style.fontSize = '10px';
             bonusBadge.style.padding = '1px 4px';
             bonusBadge.style.borderRadius = '3px';
-            bonusBadge.textContent = 'B';
+            //bonusBadge.textContent = 'B';
             bonusBadge.title = 'Bonus Tile';
             tileDiv.appendChild(bonusBadge);
         }

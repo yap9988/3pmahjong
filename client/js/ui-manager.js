@@ -404,55 +404,89 @@ class UIManager {
         this.updateDummyWallCount(data.dummyWallCount);
     }
 
-    // Update a single player's bonus tiles (keeps compatibility if called individually)
-    updateBonusTilesDisplay(playerId, bonusTiles) {
-        // Ensure parent exists
-        let parent = document.getElementById('bonusTilesDisplay');
-        if (!parent) {
-            const gameScreen = document.getElementById('game');
-            if (gameScreen) {
-                parent = document.createElement('div');
-                parent.id = 'bonusTilesDisplay';
-                parent.style.margin = '10px 0';
-                parent.style.padding = '10px';
-                parent.style.background = 'rgba(255, 255, 255, 0.03)';
-                parent.style.borderRadius = '8px';
-                parent.innerHTML = '<h4>Bonus Tiles (by player)</h4>';
-                gameScreen.insertBefore(parent, gameScreen.querySelector('.section:last-child'));
+    // Update game display (show players + bonus tiles for all players)
+    updateGameDisplay(data) {
+        this.setElementText('dummyWallCount', data.dummyWallCount);
+        
+        const players = data.players || [];
+        if (players.length >= 3) {
+            // Find our position
+            const ourIndex = players.findIndex(p => p.id === this.gameManager.playerId);
+            
+            if (ourIndex === 0) {
+                this.setElementText('playerNameDisplay', `${this.gameManager.playerName} (East)`);
+                this.setElementText('opponent1Name', `${players[1].name} (South)`);
+                this.setElementText('opponent2Name', `${players[2].name} (West)`);
+                this.setElementText('seatWindDisplay', 'East');
+            } else if (ourIndex === 1) {
+                this.setElementText('playerNameDisplay', `${this.gameManager.playerName} (South)`);
+                this.setElementText('opponent1Name', `${players[0].name} (East)`);
+                this.setElementText('opponent2Name', `${players[2].name} (West)`);
+                this.setElementText('seatWindDisplay', 'South');
+            } else {
+                this.setElementText('playerNameDisplay', `${this.gameManager.playerName} (West)`);
+                this.setElementText('opponent1Name', `${players[0].name} (East)`);
+                this.setElementText('opponent2Name', `${players[1].name} (South)`);
+                this.setElementText('seatWindDisplay', 'West');
             }
         }
 
-        // Find player container (if exists) or create it
-        let playerDiv = document.getElementById(`bonus-${playerId}`);
-        if (!playerDiv) {
-            playerDiv = document.createElement('div');
-            playerDiv.id = `bonus-${playerId}`;
-            playerDiv.style.marginTop = '8px';
-            playerDiv.style.padding = '6px';
-            playerDiv.style.borderTop = '1px solid rgba(255,255,255,0.04)';
-            playerDiv.style.display = 'flex';
-            playerDiv.style.alignItems = 'center';
-            playerDiv.style.gap = '12px';
-            parent.appendChild(playerDiv);
-        } else {
-            playerDiv.innerHTML = ''; // refresh
+        // Update bonus tiles display FOR ALL PLAYERS
+        if (data.bonusTiles && players && players.length > 0) {
+            let parent = document.getElementById('bonusTilesDisplay');
+            if (!parent) {
+                const gameScreen = document.getElementById('game');
+                if (gameScreen) {
+                    parent = document.createElement('div');
+                    parent.id = 'bonusTilesDisplay';
+                    parent.style.margin = '10px 0';
+                    parent.style.padding = '10px';
+                    parent.style.background = 'rgba(255, 255, 255, 0.03)';
+                    parent.style.borderRadius = '8px';
+                    parent.innerHTML = '<h4>Bonus Tiles (by player)</h4>';
+                    gameScreen.insertBefore(parent, gameScreen.querySelector('.section:last-child'));
+                }
+            }
+
+            if (parent) {
+                const title = parent.querySelector('h4') || document.createElement('h4');
+                title.textContent = 'Bonus Tiles (by player)';
+                parent.innerHTML = '';
+                parent.appendChild(title);
+
+                players.forEach(p => {
+                    const bonusForPlayer = (data.bonusTiles && data.bonusTiles[p.id]) ? data.bonusTiles[p.id] : [];
+                    const playerDiv = document.createElement('div');
+                    playerDiv.id = `bonus-${p.id}`;
+                    playerDiv.style.marginTop = '8px';
+                    playerDiv.style.padding = '6px';
+                    playerDiv.style.borderTop = '1px solid rgba(255,255,255,0.04)';
+                    playerDiv.style.display = 'flex';
+                    playerDiv.style.alignItems = 'center';
+                    playerDiv.style.gap = '12px';
+
+                    const nameSpan = document.createElement('div');
+                    nameSpan.style.minWidth = '160px';
+                    nameSpan.style.fontWeight = '600';
+                    nameSpan.style.color = '#fff';
+                    const displayName = (p.id === this.gameManager.playerId) ? `${p.name} (You)` : p.name;
+                    nameSpan.textContent = `${displayName} — ${p.seatWind || ''}`;
+
+                    const bonusDisplay = this.tileRenderer.createBonusTileDisplay(bonusForPlayer);
+                    bonusDisplay.style.display = 'flex';
+                    bonusDisplay.style.flexWrap = 'wrap';
+                    bonusDisplay.style.gap = '6px';
+
+                    playerDiv.appendChild(nameSpan);
+                    playerDiv.appendChild(bonusDisplay);
+
+                    parent.appendChild(playerDiv);
+                });
+            }
         }
 
-        const playerObj = this.gameManager.players.find(p => p.id === playerId) || { name: 'Unknown', seatWind: '' };
-        const nameSpan = document.createElement('div');
-        nameSpan.style.minWidth = '160px';
-        nameSpan.style.fontWeight = '600';
-        nameSpan.style.color = '#fff';
-        const displayName = (playerId === this.gameManager.playerId) ? `${playerObj.name} (You)` : playerObj.name;
-        nameSpan.textContent = `${displayName} — ${playerObj.seatWind || ''}`;
-
-        const bonusDisplay = this.tileRenderer.createBonusTileDisplay(bonusTiles);
-        bonusDisplay.style.display = 'flex';
-        bonusDisplay.style.flexWrap = 'wrap';
-        bonusDisplay.style.gap = '6px';
-
-        playerDiv.appendChild(nameSpan);
-        playerDiv.appendChild(bonusDisplay);
+        // Update dummy wall count
+        this.updateDummyWallCount(data.dummyWallCount);
     }
 
 
@@ -477,36 +511,54 @@ class UIManager {
         document.body.appendChild(declarationUI);
     }
 
+    // Update a single player's bonus tiles
     updateBonusTilesDisplay(playerId, bonusTiles) {
-        const bonusContainer = document.getElementById('bonusTilesDisplay');
-        if (!bonusContainer) {
-            // Create bonus display if it doesn't exist
+        let parent = document.getElementById('bonusTilesDisplay');
+        if (!parent) {
             const gameScreen = document.getElementById('game');
             if (gameScreen) {
-                const bonusDiv = document.createElement('div');
-                bonusDiv.id = 'bonusTilesDisplay';
-                bonusDiv.style.margin = '10px 0';
-                bonusDiv.style.padding = '10px';
-                bonusDiv.style.background = 'rgba(255, 255, 255, 0.1)';
-                bonusDiv.style.borderRadius = '8px';
-                bonusDiv.innerHTML = '<h4>Bonus Tiles</h4>';
-                gameScreen.insertBefore(bonusDiv, gameScreen.querySelector('.section:last-child'));
+                parent = document.createElement('div');
+                parent.id = 'bonusTilesDisplay';
+                parent.style.margin = '10px 0';
+                parent.style.padding = '10px';
+                parent.style.background = 'rgba(255, 255, 255, 0.03)';
+                parent.style.borderRadius = '8px';
+                parent.innerHTML = '<h4>Bonus Tiles (by player)</h4>';
+                gameScreen.insertBefore(parent, gameScreen.querySelector('.section:last-child'));
             }
         }
-        
-        // Update bonus display
-        const container = document.getElementById('bonusTilesDisplay');
-        if (container) {
-            const bonusDisplay = this.tileRenderer.createBonusTileDisplay(bonusTiles);
-            // Keep the title
-            const title = container.querySelector('h4') || document.createElement('h4');
-            title.textContent = 'Bonus Tiles';
-            container.innerHTML = '';
-            container.appendChild(title);
-            container.appendChild(bonusDisplay);
-        }
-    }
 
+        let playerDiv = document.getElementById(`bonus-${playerId}`);
+        if (!playerDiv) {
+            playerDiv = document.createElement('div');
+            playerDiv.id = `bonus-${playerId}`;
+            playerDiv.style.marginTop = '8px';
+            playerDiv.style.padding = '6px';
+            playerDiv.style.borderTop = '1px solid rgba(255,255,255,0.04)';
+            playerDiv.style.display = 'flex';
+            playerDiv.style.alignItems = 'center';
+            playerDiv.style.gap = '12px';
+            parent.appendChild(playerDiv);
+        } else {
+            playerDiv.innerHTML = '';
+        }
+
+        const playerObj = this.gameManager.players.find(p => p.id === playerId) || { name: 'Unknown', seatWind: '' };
+        const nameSpan = document.createElement('div');
+        nameSpan.style.minWidth = '160px';
+        nameSpan.style.fontWeight = '600';
+        nameSpan.style.color = '#fff';
+        const displayName = (playerId === this.gameManager.playerId) ? `${playerObj.name} (You)` : playerObj.name;
+        nameSpan.textContent = `${displayName} — ${playerObj.seatWind || ''}`;
+
+        const bonusDisplay = this.tileRenderer.createBonusTileDisplay(bonusTiles);
+        bonusDisplay.style.display = 'flex';
+        bonusDisplay.style.flexWrap = 'wrap';
+        bonusDisplay.style.gap = '6px';
+
+        playerDiv.appendChild(nameSpan);
+        playerDiv.appendChild(bonusDisplay);
+    }
     
     updateDummyWallCount(count) {
         this.setElementText('dummyWallCount', count);

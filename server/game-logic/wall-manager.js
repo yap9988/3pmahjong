@@ -11,32 +11,36 @@ class WallManager {
         console.log('WallManager: Dummy wall initialized with', this.dummyWall.length, 'tiles');
     }
     
+    // Draw from the back of the dummy wall. Collect any bonus tiles popped
+    // into poppedBonuses array and return the first non-bonus tile along with them.
     drawFromDummyWall() {
         if (this.dummyWall.length === 0) {
             throw new Error('No tiles left in dummy wall');
         }
-        
+
+        const poppedBonuses = [];
         let tile = this.dummyWall.pop();
-        
-        // If popped tile is a bonus, move it to replacementWall and keep popping
+
+        // If popped tile is a bonus, collect it and keep popping until we find a non-bonus.
         while (tile && tile.isBonus) {
-            this.replacementWall.push(tile);
+            poppedBonuses.push(tile);
             console.log(`WallManager: Bonus tile ${tile.display} popped from back and set aside`);
             if (this.dummyWall.length === 0) {
-                // No more tiles to draw
                 tile = null;
                 break;
             }
             tile = this.dummyWall.pop();
         }
+
         if (!tile) {
-            throw new Error('No non-bonus replacement tile available in dummy wall');
+            // No non-bonus tile available; return popped bonuses and null tile
+            return { tile: null, poppedBonuses };
         }
-        
-        return tile;
+
+        return { tile, poppedBonuses };
     }
 
-    // If needed later, you can expose the stored bonus tiles via a getter:
+    // Optional getter for replacement piles
     getReplacementBonuses() {
         return this.replacementWall.slice();
     }
@@ -48,7 +52,6 @@ class WallManager {
         console.log(`WallManager: Replacing bonus ${bonusTile.display} with ${replacement.display}`);
         return replacement;
     }
-
 
     discardTile(tile, playerId, playerName, playerWind) {
         const discardRecord = {

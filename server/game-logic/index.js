@@ -73,21 +73,29 @@ class MalaysiaMahjong3P {
         if (!player.bonusTiles) player.bonusTiles = [];
         
         bonusTiles.forEach(bonusTile => {
-            // Remove bonus tile from hand
+            // Remove bonus tile from hand and record it for the player
             const index = player.hand.findIndex(t => t.id === bonusTile.id);
             if (index !== -1) {
                 player.hand.splice(index, 1);
-
                 player.bonusTiles.push(bonusTile);
                 
-                // Draw replacement from dummy wall
+                // Draw replacement(s) from dummy wall: drawFromDummyWall now returns
+                // { tile, poppedBonuses } where poppedBonuses are additional bonus tiles
+                // popped from the back during the search for a non-bonus tile.
                 if (this.wallManager.getDummyWallCount() > 0) {
-                    const replacement = this.wallManager.drawFromDummyWall();
-                    if (!replacement) {
-                        throw new Error('No replacement tile available after removing bonus tile');
+                    const { tile: replacement, poppedBonuses } = this.wallManager.drawFromDummyWall();
+                    // Assign any popped bonuses to the same player (they belong to them)
+                    if (poppedBonuses && poppedBonuses.length > 0) {
+                        if (!player.bonusTiles) player.bonusTiles = [];
+                        player.bonusTiles.push(...poppedBonuses);
+                        console.log(`Game: ${player.name} received extra bonus tiles from back: ${poppedBonuses.map(t => t.display).join(', ')}`);
                     }
-                    player.hand.push(replacement);
-                    console.log(`Game: Replaced bonus ${bonusTile.display} with ${replacement.display} for ${player.name}`);
+                    if (replacement) {
+                        player.hand.push(replacement);
+                        console.log(`Game: Replaced bonus ${bonusTile.display} with ${replacement.display} for ${player.name}`);
+                    } else {
+                        console.warn('Game: No non-bonus replacement available for', player.name);
+                    }
                 } else {
                     console.warn('Game: Dummy wall empty while replacing bonus tile');
                 }
@@ -97,6 +105,8 @@ class MalaysiaMahjong3P {
         // Re-sort hand after replacements
         player.hand = this.tileManager.sortHand(player.hand);
     }
+
+
     
     getGameState() {
         const currentPlayer = this.turnManager.getCurrentPlayer();
@@ -154,54 +164,45 @@ class MalaysiaMahjong3P {
         }
         
         try {
-            // Draw from dummy wall
-            const tile = this.wallManager.drawFromDummyWall();
+            // Draw from dummy wall: get replacement tile and any popped bonuses
+            const drawResult = this.wallManager.drawFromDummyWall();
+            const tile = drawResult.tile;
+            const poppedBonuses = drawResult.poppedBonuses || [];
             const player = this.turnManager.getPlayerById(playerId);
-            
-            // Check if drawn tile is a bonus tile
-            if (tile.isBonus) {
-                // Add to bonus tiles and draw replacement
+
+            // If any popped bonuses were found, assign them to the player
+            if (poppedBonuses.length > 0) {
                 if (!player.bonusTiles) player.bonusTiles = [];
-                player.bonusTiles.push(tile);
-                
-                // Draw replacement
-                if (this.wallManager.getDummyWallCount() > 0) {
-                    const replacement = this.wallManager.drawFromDummyWall();
-                    player.hand.push(replacement);
-                    player.hand = this.tileManager.sortHand(player.hand);
-                    
-                    console.log(`Game: ${player.name} drew bonus ${tile.display}, replaced with ${replacement.display}`);
-                    
-                    return {
-                        success: true,
-                        tile: replacement,
-                        bonusTile: tile,
-                        hand: player.hand,
-                        bonusTiles: player.bonusTiles,
-                        dummyWallCount: this.wallManager.getDummyWallCount(),
-                        message: `Drew ${replacement.display} (replaced bonus ${tile.display})`
-                    };
-                }
-            } else {
-                // Normal tile
-                player.hand.push(tile);
-                player.hand = this.tileManager.sortHand(player.hand);
-                
-                console.log('Game:', player.name, 'drew', tile.display);
-                
-                return {
-                    success: true,
-                    tile: tile,
-                    hand: player.hand,
-                    dummyWallCount: this.wallManager.getDummyWallCount(),
-                    message: `Drew ${tile.display}`
-                };
+                player.bonusTiles.push(...poppedBonuses);
+                console.log(`Game: ${player.name} received bonus replacement tiles: ${poppedBonuses.map(t => t.display).join(', ')}`);
             }
+
+            // If the returned tile is null it means no non-bonus tile available
+            if (!tile) {
+                return { error: 'No replacement tile available' };
+            }
+
+            // Normal tile (replacement tile after skipping any bonuses)
+            player.hand.push(tile);
+            player.hand = this.tileManager.sortHand(player.hand);
+            
+            console.log('Game:', player.name, 'drew', tile.display);
+            
+            return {
+                success: true,
+                tile: tile,
+                hand: player.hand,
+                bonusTiles: player.bonusTiles || [],
+                dummyWallCount: this.wallManager.getDummyWallCount(),
+                message: `Drew ${tile.display}`
+            };
             
         } catch (error) {
             return { error: error.message };
         }
     }
+
+
     discardTile(playerId, tileId) {
         console.log('Game: Player', playerId, 'discarding tile', tileId);
         

@@ -139,8 +139,8 @@ class TileRenderer {
             wildBadge.style.fontSize = '10px';
             wildBadge.style.padding = '1px 4px';
             wildBadge.style.borderRadius = '3px';
-            wildBadge.textContent = 'W';
-            wildBadge.title = 'Wild Card';
+            //wildBadge.textContent = 'W';
+            //wildBadge.title = 'Wild Card';
             tileDiv.appendChild(wildBadge);
         }
         
@@ -155,8 +155,8 @@ class TileRenderer {
             bonusBadge.style.fontSize = '10px';
             bonusBadge.style.padding = '1px 4px';
             bonusBadge.style.borderRadius = '3px';
-            bonusBadge.textContent = 'B';
-            bonusBadge.title = 'Bonus Tile';
+            //bonusBadge.textContent = 'B';
+            //bonusBadge.title = 'Bonus Tile';
             tileDiv.appendChild(bonusBadge);
         }
         
@@ -171,8 +171,8 @@ class TileRenderer {
             northBadge.style.fontSize = '10px';
             northBadge.style.padding = '1px 4px';
             northBadge.style.borderRadius = '3px';
-            northBadge.textContent = 'N';
-            northBadge.title = 'North Wind (1 fan for all)';
+            //northBadge.textContent = 'N';
+            //northBadge.title = 'North Wind (1 fan for all)';
             tileDiv.appendChild(northBadge);
         }
         
@@ -187,8 +187,8 @@ class TileRenderer {
             eastBadge.style.fontSize = '10px';
             eastBadge.style.padding = '1px 4px';
             eastBadge.style.borderRadius = '3px';
-            eastBadge.textContent = 'E²';
-            eastBadge.title = 'East Wind (2 fans for East player)';
+            //eastBadge.textContent = 'E²';
+            //eastBadge.title = 'East Wind (2 fans for East player)';
             tileDiv.appendChild(eastBadge);
         }
     }

@@ -169,6 +169,18 @@ class SocketManager {
     declarePung(roomId, tileId) {
         this.socket.emit('declarePung', { roomId, tileId });
     }
+
+    declareKong(roomId, tileId) {
+        if (!this.socket) return;
+        this.socket.emit('gameAction', { action: 'declareKong', roomId, data: { tileId } }, (response) => {
+            if (response && response.error) {
+                this.gameManager.uiManager.showMessage('gameMessage', response.error, 'error');
+            } else {
+                console.log('declareKong response:', response);
+                // Optionally handle ack here (server returns result via callback)
+            }
+        });
+    }
     
     declareWin(roomId) {
         this.socket.emit('declareWin', roomId);

@@ -145,6 +145,9 @@ class UIManager {
                             <button id="pungBtn" class="btn btn-warning hidden">
                                 <i class="fas fa-layer-group"></i> Pung!
                             </button>
+                            <button id="kongBtn" class="btn btn-secondary hidden">
+                                <i class="fas fa-layer-group"></i> Kong!
+                            </button>
                             <button id="winBtn" class="btn btn-success">
                                 <i class="fas fa-trophy"></i> Declare Win
                             </button>
@@ -652,6 +655,30 @@ class UIManager {
             this.showMessage('gameMessage', 'Pung opportunity passed.', 'info');
         }, 5000);
     }
+
+
+
+    showKongButton(tile, kongCallback) {
+        const kongBtn = document.getElementById('kongBtn');
+        if (!kongBtn) return;
+
+        kongBtn.classList.remove('hidden');
+        kongBtn.disabled = false;
+        kongBtn.innerHTML = `<i class="fas fa-layer-group"></i> Kong ${tile.display || tile.value}!`;
+        kongBtn.onclick = () => {
+            kongCallback();
+            this.hideKongButton();
+        };
+
+        this.showMessage('gameMessage', `You can KONG ${tile.display || tile.value}! Click within 5 seconds.`, 'success');
+
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+            this.hideKongButton();
+            this.showMessage('gameMessage', 'Kong opportunity passed.', 'info');
+        }, 5000);
+    }
+
     
     hidePungButton() {
         const pungBtn = document.getElementById('pungBtn');
@@ -659,6 +686,15 @@ class UIManager {
             pungBtn.classList.add('hidden');
             pungBtn.disabled = true;
             pungBtn.innerHTML = `<i class="fas fa-layer-group"></i> Pung`;
+        }
+    }
+
+    hideKongButton() {
+        const kongBtn = document.getElementById('kongBtn');
+        if (kongBtn) {
+            kongBtn.classList.add('hidden');
+            kongBtn.disabled = true;
+            kongBtn.innerHTML = `<i class="fas fa-layer-group"></i> Kong!`;
         }
     }
     

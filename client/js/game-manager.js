@@ -121,6 +121,14 @@ class GameManager {
             this.socketManager.declarePung(this.roomId, tileId);
         }
     }
+
+    // Client action to declare kong — calls socketManager
+    declareKong(tileId) {
+        if (this.roomId && tileId) {
+            console.log('GameManager: Declaring kong for tile', tileId);
+            this.socketManager.declareKong(this.roomId, tileId);
+        }
+    }
     
     declareWin() {
         if (this.roomId) {
@@ -227,27 +235,64 @@ class GameManager {
         this.uiManager.makeTilesDiscardable(this.currentHand, (tileId) => this.discardTile(tileId));
     }
     
+
     onTileDiscarded(data) {
+        // Server emitted discard info to all clients
         this.uiManager.addToDiscardPile(data.tile);
         this.turnManager.updateTurnState(data.currentPlayer);
-        
-        // Check for pung opportunity
+
+        // If we are the one who discarded, don't show pung/kong for self
+        if (data.playerId === this.playerId) return;
+
+        // Check for pung/kong opportunity considering wild cards (fei)
         const canPung = this.checkPungOpportunity(data.tile, data.playerId);
         if (canPung) {
             this.uiManager.showPungButton(data.tile, () => this.declarePung(data.tile.id));
+        } else {
+            this.uiManager.hidePungButton();
+        }
+
+        const canKong = this.checkKongOpportunity(data.tile, data.playerId);
+        if (canKong) {
+            this.uiManager.showKongButton(data.tile, () => this.declareKong(data.tile.id));
+        } else {
+            this.uiManager.hideKongButton();
         }
     }
     
+
+    // Updated pung check: consider wild (fei) tiles in our hand
     checkPungOpportunity(discardedTile, fromPlayerId) {
         if (fromPlayerId === this.playerId) return false;
         
         const matchingTiles = this.currentHand.filter(tile => 
-            tile.type === discardedTile.type && 
-            tile.value === discardedTile.value
+            !tile.isWild && tile.type === discardedTile.type && tile.value === discardedTile.value
         );
-        
-        return matchingTiles.length >= 2;
+        const wildTiles = this.currentHand.filter(tile => tile.isWild);
+
+        // total available to form pung = matchingTiles + wild tiles
+        const totalAvailable = matchingTiles.length + wildTiles.length;
+
+        return totalAvailable >= 2; // need 2 tiles in hand plus the discarded tile to pung
     }
+
+
+    // New kong check: need 3 tiles in hand (matching + wilds) to combine with discarded tile
+    checkKongOpportunity(discardedTile, fromPlayerId) {
+        if (fromPlayerId === this.playerId) return false;
+
+        const matchingTiles = this.currentHand.filter(tile => 
+            !tile.isWild && tile.type === discardedTile.type && tile.value === discardedTile.value
+        );
+        const wildTiles = this.currentHand.filter(tile => tile.isWild);
+
+        const totalAvailable = matchingTiles.length + wildTiles.length;
+
+        return totalAvailable >= 3; // need 3 tiles in hand plus the discarded tile to kong
+    }
+
+
+
     
     onError(data) {
         console.error('GameManager: Error received:', data);

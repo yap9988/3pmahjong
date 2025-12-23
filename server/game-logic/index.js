@@ -301,6 +301,7 @@ class MalaysiaMahjong3P {
                 tilesToRemove.push(player.hand.splice(i, 1)[0]);
             }
         }
+
         
         // Then use wild cards if needed
         for (let i = player.hand.length - 1; i >= 0 && tilesToRemove.length < 2; i--) {
@@ -364,6 +365,134 @@ class MalaysiaMahjong3P {
             message: `${player.name} (${player.seatWind}) punged ${tileToPung.display}! +${totalFan} fan`
         };
     }
+
+
+    declareKong(playerId, tileId) {
+        console.log('Game: Player', playerId, 'declaring kong for tile', tileId);
+
+        const lastDiscard = this.wallManager.getLastDiscard();
+        if (!lastDiscard || lastDiscard.tile.id !== tileId) {
+            return { error: 'Invalid kong declaration' };
+        }
+
+        const player = this.turnManager.getPlayerById(playerId);
+        if (!player) return { error: 'Player not found' };
+
+        const tileToKong = lastDiscard.tile;
+
+        // Count actual matching tiles in hand (non-wild)
+        const matchingTiles = player.hand.filter(t =>
+            !t.isWild && t.type === tileToKong.type && t.value === tileToKong.value
+        );
+
+        // Wild cards available in hand
+        const wildCards = player.hand.filter(t => t.isWild);
+        const availableWilds = wildCards.length;
+
+        // Check wild card declarations owned by player that already "use" wilds
+        const wildDeclarations = Array.from(this.wildCardDeclarations.entries())
+            .filter(([key, decl]) => key.startsWith(playerId))
+            .filter(([key, decl]) =>
+                decl.declaredAs.type === tileToKong.type &&
+                decl.declaredAs.value === tileToKong.value
+            );
+
+        // Total available slots we can fill (matching tiles + wilds - already declared wild uses)
+        const totalAvailable = matchingTiles.length + availableWilds - wildDeclarations.length;
+
+        // For KONG (exposed using a discard), we need 3 tiles from the player to join the discarded tile -> 4 total
+        if (totalAvailable < 3) {
+            return { error: 'Cannot form kong - need 3 matching tiles (wilds allowed)' };
+        }
+
+        // Remove 3 matching tiles/wild cards from hand (prefer actual tiles first)
+        const tilesToRemove = [];
+
+        // Remove actual matching tiles first
+        for (let i = player.hand.length - 1; i >= 0 && tilesToRemove.length < 3; i--) {
+            const tile = player.hand[i];
+            if (!tile.isWild && tile.type === tileToKong.type && tile.value === tileToKong.value) {
+                tilesToRemove.push(player.hand.splice(i, 1)[0]);
+            }
+        }
+
+        // Then use wild cards if needed
+        for (let i = player.hand.length - 1; i >= 0 && tilesToRemove.length < 3; i--) {
+            const tile = player.hand[i];
+            if (tile.isWild) {
+                const declarationKey = `${playerId}-${tile.id}`;
+                if (!this.wildCardDeclarations.has(declarationKey)) {
+                    tilesToRemove.push(player.hand.splice(i, 1)[0]);
+                    // Auto-declare this wild card as whatever the kong tile represents
+                    this.wildCardDeclarations.set(declarationKey, {
+                        wildCard: tile,
+                        declaredAs: { type: tileToKong.type, value: tileToKong.value },
+                        playerId: playerId,
+                        timestamp: Date.now()
+                    });
+                }
+            }
+        }
+
+        if (tilesToRemove.length < 3) {
+            return { error: 'Not enough matching tiles for kong after removal' };
+        }
+
+        // Create kong meld
+        const kongTiles = [...tilesToRemove, tileToKong];
+        const meld = {
+            type: 'kong',
+            tiles: kongTiles,
+            fromPlayer: lastDiscard.playerId,
+            fromPlayerWind: lastDiscard.playerWind,
+            isExposed: true,
+            usesWildCards: tilesToRemove.some(t => t.isWild)
+        };
+
+        // Add meld to player's melds
+        player.melds.push(meld);
+
+        // Remove from discard pile
+        this.wallManager.removeLastDiscard();
+
+        // Set current player to kong player (they continue play, or per your rules you might draw)
+        this.turnManager.setCurrentPlayer(playerId);
+        const currentPlayer = this.turnManager.getCurrentPlayer();
+
+        // Calculate fan (you can adjust kong fan rules; here we give same logic as pung + extra for kong)
+        const fan = this.fanCalculator.calculatePungFan(meld, player);
+        const bonusFan = this.fanCalculator.calculateBonusFan(player);
+        // Give extra fan for kong (example +1)
+        const kongExtra = 1;
+        const totalFan = fan + bonusFan + kongExtra;
+
+        console.log(`Game: ${player.name} konged ${tileToKong.display} +${totalFan} fan (including kong extra)`);
+
+        return {
+            success: true,
+            meld: meld,
+            hand: player.hand,
+            currentPlayer: playerId,
+            currentPlayerName: player.name,
+            currentPlayerWind: player.seatWind,
+            fan: totalFan,
+            bonusFan: bonusFan,
+            message: `${player.name} (${player.seatWind}) konged ${tileToKong.display}! +${totalFan} fan`
+        };
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
     
     checkWin(playerId) {
         const player = this.turnManager.getPlayerById(playerId);

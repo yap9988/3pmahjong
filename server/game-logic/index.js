@@ -15,6 +15,10 @@ class MalaysiaMahjong3P {
         this.gameState = 'waiting';
         this.gameStarted = false;
         this.wildCardDeclarations = new Map(); // Track wild card usage
+
+        // When true, this indicates the very first play of the round (East already has 14 tiles
+        // and should DISCARD rather than DRAW). Cleared after East's first discard.
+        this.firstTurn = false;
     }
     
     initializeGame(playerList) {
@@ -46,6 +50,9 @@ class MalaysiaMahjong3P {
         // 6. Set game state
         this.gameState = 'playing';
         this.gameStarted = true;
+
+        // Set firstTurn true so server enforces East to discard first (East already has 14)
+        this.firstTurn = true;
         
         console.log('Game: Initialization complete');
         
@@ -112,7 +119,9 @@ class MalaysiaMahjong3P {
             hands: hands,
             bonusTiles: bonusTiles,
             lastDiscard: this.wallManager.lastDiscard,
-            wildCardDeclarations: Object.fromEntries(this.wildCardDeclarations)
+            wildCardDeclarations: Object.fromEntries(this.wildCardDeclarations),
+            // flag telling clients whether it's the special first-turn (East discards)
+            firstTurn: !!this.firstTurn
         };
         
         return gameState;
@@ -129,6 +138,12 @@ class MalaysiaMahjong3P {
                 currentPlayer: currentPlayer.id,
                 currentPlayerName: currentPlayer.name
             };
+        }
+
+        // Prevent East from drawing on firstTurn (East already has 14; must discard)
+        const currentPlayer = this.turnManager.getCurrentPlayer();
+        if (this.firstTurn && currentPlayer && currentPlayer.id === playerId) {
+            return { error: 'First turn: dealer already has 14 tiles and must discard first' };
         }
         
         try {
@@ -180,63 +195,6 @@ class MalaysiaMahjong3P {
             return { error: error.message };
         }
     }
-    
-    // Handle wild card declaration
-    declareWildCard(playerId, wildCardId, declaredAs) {
-        const player = this.turnManager.getPlayerById(playerId);
-        if (!player) return { error: 'Player not found' };
-        
-        // Find wild card in player's hand
-        const wildCardIndex = player.hand.findIndex(t => t.id === wildCardId && t.isWild);
-        if (wildCardIndex === -1) return { error: 'Wild card not found' };
-        
-        const wildCard = player.hand[wildCardIndex];
-        
-        // Store declaration
-        const declarationKey = `${playerId}-${wildCardId}`;
-        this.wildCardDeclarations.set(declarationKey, {
-            wildCard: wildCard,
-            declaredAs: declaredAs,
-            playerId: playerId,
-            timestamp: Date.now()
-        });
-        
-        console.log(`Game: ${player.name} declared wild card ${wildCard.display} as ${declaredAs.type} ${declaredAs.value}`);
-        
-        return {
-            success: true,
-            wildCard: wildCard,
-            declaredAs: declaredAs,
-            message: `Wild card declared as ${declaredAs.type} ${declaredAs.value}`
-        };
-    }
-    
-    // Check if a tile can be used (considering wild cards)
-    canUseTile(playerId, tileType, tileValue) {
-        const player = this.turnManager.getPlayerById(playerId);
-        if (!player) return false;
-        
-        // Check for actual tile
-        const hasTile = player.hand.some(t => 
-            t.type === tileType && t.value === tileValue && !t.isWild
-        );
-        
-        if (hasTile) return true;
-        
-        // Check for wild cards
-        const hasWild = player.hand.some(t => t.isWild);
-        
-        // Check if wild card is already declared for this tile
-        const wildDeclarations = Array.from(this.wildCardDeclarations.entries())
-            .filter(([key, decl]) => key.startsWith(playerId))
-            .filter(([key, decl]) => 
-                decl.declaredAs.type === tileType && 
-                decl.declaredAs.value === tileValue
-            );
-        
-        return hasWild && wildDeclarations.length === 0;
-    }
-    
     discardTile(playerId, tileId) {
         console.log('Game: Player', playerId, 'discarding tile', tileId);
         
@@ -268,6 +226,13 @@ class MalaysiaMahjong3P {
             player.name, 
             player.seatWind
         );
+
+
+        // If this was the firstTurn discard by East, clear the firstTurn flag
+        if (this.firstTurn) {
+            this.firstTurn = false;
+            console.log('Game: First turn complete - clearing firstTurn flag');
+        }
         
         // Move to next player
         const nextPlayer = this.turnManager.nextTurn();

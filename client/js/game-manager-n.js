@@ -183,13 +183,56 @@ class GameManager {
     
         this.uiManager.renderCurrentHand(this.currentHand);
         console.log('Hand rendered');
+
+
+        // Render bonus tiles for all players so everyone sees the removed flowers/seasons/etc.
+        if (data.bonusTiles) {
+            data.players.forEach(p => {
+                const bonusForPlayer = data.bonusTiles[p.id] || [];
+                this.uiManager.updateBonusTilesDisplay(p.id, bonusForPlayer);
+            });
+            console.log('Bonus tiles updated for all players');
+        }
+
     
         this.turnManager.updateTurnState(data.currentPlayer);
+
+
+        // If the server indicated it's the firstTurn (East discards), adapt UI:
+        if (data.firstTurn) {
+            // If I'm the current player (dealer/East) disable draw and instruct to discard
+            if (this.turnManager.isMyTurn) {
+                const drawBtn = document.getElementById('drawTileBtn');
+                if (drawBtn) drawBtn.disabled = true;
+
+                this.uiManager.showMessage('gameMessage', 'You are East and start with 14 tiles — please discard a tile (do not draw).', 'success');
+            } else {
+                // If not the dealer, show a message that East will discard first
+                const dealer = data.currentPlayerName || 'Dealer';
+                this.uiManager.showMessage('gameMessage', `${dealer} (East) will discard first.`, 'info');
+            }
+        } else {
+            // Not first turn — normal flow (draw enabled/disabled handled by turnManager)
+            const message = (this.turnManager.isMyTurn ? 'Your turn! Click Draw Tile.' : 'Waiting for turn...');
+            this.uiManager.showMessage('gameMessage', message, 'success');
+        }
+
+
         console.log('Turn state updated');
+
+   
+        // Force a UI refresh/visual update if needed
+        setTimeout(() => {
+            try {
+                const gameEl = document.getElementById('game');
+                if (gameEl) gameEl.style.display = 'block';
+            } catch (e) { /* noop */ }
+        }, 100);
+    }
     
-        const message = 'Game started! ' + (this.turnManager.isMyTurn ? 'Your turn!' : 'Waiting for turn...');
-        this.uiManager.showMessage('gameMessage', message, 'success');
-        console.log('Message shown:', message);
+        //const message = 'Game started! ' + (this.turnManager.isMyTurn ? 'Your turn!' : 'Waiting for turn...');
+        //this.uiManager.showMessage('gameMessage', message, 'success');
+        //console.log('Message shown:', message);
     
         // Force a UI refresh
         setTimeout(() => {

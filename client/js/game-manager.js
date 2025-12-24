@@ -18,6 +18,8 @@ class GameManager {
         
         this.currentHand = [];
         this.players = [];
+        this.bonusTiles = {}; // Map of playerId -> array of bonus tiles
+        this.lastDrawnTileId = null; // Track the most recently drawn tile for UI separation
         
         this.canDiscard = false; // Track if player is allowed to discard
         this.initialize();
@@ -113,6 +115,7 @@ class GameManager {
         if (this.roomId && tileId) {
             console.log('GameManager: Discarding tile', tileId);
             this.canDiscard = false; // Prevent double discard
+            this.lastDrawnTileId = null; // Reset drawn tile separation on discard
             this.socketManager.discardTile(this.roomId, tileId);
         }
     }
@@ -183,6 +186,7 @@ class GameManager {
 
         this.setCurrentHand(data.hands[this.playerId] || []);
         this.setPlayers(data.players || []);
+        this.bonusTiles = data.bonusTiles || {};
 
         // go to game screen & render UI
         this.uiManager.showScreen('game');
@@ -203,12 +207,6 @@ class GameManager {
 
         // --- Render bonus tiles for all players (labelled by player) ---
         // Ensure data.bonusTiles exists and players are available
-        if (data.bonusTiles && Array.isArray(data.players)) {
-            data.players.forEach(p => {
-                const bonusForPlayer = data.bonusTiles[p.id] || [];
-                this.uiManager.updateBonusTilesDisplay(p.id, bonusForPlayer);
-            });
-        }
 
         // If firstTurn flag from server: disable draw button for dealer
         if (data.firstTurn) {
@@ -240,6 +238,7 @@ class GameManager {
         }
 
         // Update hand and UI
+        this.lastDrawnTileId = data.tile ? data.tile.id : null;
         this.setCurrentHand(data.hand);
         this.uiManager.renderCurrentHand(this.currentHand);
 
@@ -251,7 +250,8 @@ class GameManager {
         // If server provided bonusTiles for this player, update bonus tiles UI
         if (data.bonusTiles && Array.isArray(data.bonusTiles)) {
             // Ensure the client's bonus area for THIS player is updated
-            this.uiManager.updateBonusTilesDisplay(this.playerId, data.bonusTiles || []);
+            this.bonusTiles[this.playerId] = data.bonusTiles;
+            this.uiManager.renderPlayerMeldsAndBonus(this.playerId);
         }
 
         // Construct message
@@ -340,7 +340,14 @@ class GameManager {
     // Handler invoked when server broadcasts 'pungDeclared'
     onPungDeclared(data) {
         console.log('GameManager: onPungDeclared', data);
-        this.uiManager.addMeld(data.playerId, data.meld);
+        
+        // Update local player state for melds
+        const p = this.players.find(pl => pl.id === data.playerId);
+        if (p) {
+            if (!p.melds) p.melds = [];
+            p.melds.push(data.meld);
+        }
+        this.uiManager.renderPlayerMeldsAndBonus(data.playerId);
         
         // If the meld came from a discard (which Pung always does), remove it from the pile
         if (data.meld && data.meld.fromPlayer !== data.playerId) {
@@ -369,7 +376,13 @@ class GameManager {
     // Handler invoked when server broadcasts 'chiDeclared'
     onChiDeclared(data) {
         console.log('GameManager: onChiDeclared', data);
-        this.uiManager.addMeld(data.playerId, data.meld);
+        
+        const p = this.players.find(pl => pl.id === data.playerId);
+        if (p) {
+            if (!p.melds) p.melds = [];
+            p.melds.push(data.meld);
+        }
+        this.uiManager.renderPlayerMeldsAndBonus(data.playerId);
         
         if (data.meld && data.meld.fromPlayer !== data.playerId) {
             this.uiManager.removeLastDiscardFromPile();
@@ -397,7 +410,12 @@ class GameManager {
         if (!data) return;
 
         // Add meld visually
-        this.uiManager.addMeld(data.playerId, data.meld);
+        const p = this.players.find(pl => pl.id === data.playerId);
+        if (p) {
+            if (!p.melds) p.melds = [];
+            p.melds.push(data.meld);
+        }
+        this.uiManager.renderPlayerMeldsAndBonus(data.playerId);
 
         // If the meld came from a discard (Ming Kong), remove it from the pile
         if (data.meld && data.meld.fromPlayer !== data.playerId) {
@@ -428,6 +446,7 @@ class GameManager {
         if (data.hand) {
             this.setCurrentHand(data.hand);
             this.uiManager.renderCurrentHand(this.currentHand);
+            // Note: Kong draw usually doesn't need separation like normal draw, or we can set lastDrawnTileId if desired.
         } else if (data.tile) {
             // if only tile provided, add it then render
             this.currentHand.push(data.tile);
@@ -441,7 +460,8 @@ class GameManager {
 
         // Update bonus tiles if provided
         if (data.bonusTiles && Array.isArray(data.bonusTiles)) {
-            this.uiManager.updateBonusTilesDisplay(this.playerId, data.bonusTiles || []);
+            this.bonusTiles[this.playerId] = data.bonusTiles;
+            this.uiManager.renderPlayerMeldsAndBonus(this.playerId);
         }
 
         // Show the special message for kong draw
@@ -455,6 +475,7 @@ class GameManager {
 
     // Handler for handUpdated event
     onHandUpdated(data) {
+        this.lastDrawnTileId = null; // Reset separation on generic update
         this.setCurrentHand(data.hand);
         this.uiManager.renderCurrentHand(this.currentHand);
 

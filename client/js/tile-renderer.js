@@ -102,15 +102,18 @@ class TileRenderer {
 
     applyTileStyle(tileDiv, tile) {
         // Base container styles. Make sure there's NO padding which would shrink image space.
+        const baseSize = 3.8; // Base size in vmin (viewport minimum) for hand tiles
+        const aspectRatio = 1.4; // height / width
+
         tileDiv.style.display = 'inline-block';
-        tileDiv.style.width = '50px';   // control tile size here
-        tileDiv.style.height = '70px';  // control tile size here
-        tileDiv.style.margin = '5px';
+        tileDiv.style.width = `${baseSize}vmin`;
+        tileDiv.style.height = `${baseSize * aspectRatio}vmin`;
+        tileDiv.style.margin = '0 1px'; // Tight spacing ("stick together")
         tileDiv.style.padding = '0';     // important: no padding
-        tileDiv.style.borderRadius = '8px';
+        tileDiv.style.borderRadius = `${baseSize * 0.1}vmin`;
         tileDiv.style.boxSizing = 'border-box';
         tileDiv.style.fontWeight = 'bold';
-        tileDiv.style.fontSize = '18px';
+        tileDiv.style.fontSize = `${baseSize * 0.35}vmin`; // Responsive font size
         tileDiv.style.cursor = 'pointer';
         tileDiv.style.boxShadow = '2px 2px 5px rgba(0,0,0,0.12)';
         tileDiv.style.position = 'relative';
@@ -142,7 +145,7 @@ class TileRenderer {
             wildBadge.style.fontSize = '10px';
             wildBadge.style.padding = '1px 4px';
             wildBadge.style.borderRadius = '3px';
-            wildBadge.textContent = 'W';
+            //wildBadge.textContent = 'W';
             wildBadge.title = 'Wild tile (飛)';
             if (tile.declaredAs && tile.declaredAs.value) {
                 wildBadge.title = `Declared as ${tile.declaredAs.value} ${tile.declaredAs.type}`;
@@ -161,7 +164,7 @@ class TileRenderer {
             bonusBadge.style.fontSize = '10px';
             bonusBadge.style.padding = '1px 4px';
             bonusBadge.style.borderRadius = '3px';
-            bonusBadge.textContent = 'B';
+            //bonusBadge.textContent = 'B';
             bonusBadge.title = 'Bonus Tile';
             tileDiv.appendChild(bonusBadge);
         }
@@ -174,7 +177,7 @@ class TileRenderer {
         container.className = 'bonus-tiles-container';
         container.style.display = 'flex';
         container.style.flexWrap = 'wrap';
-        container.style.gap = '5px';
+        container.style.gap = '2px';
         container.style.margin = '10px 0';
         container.style.padding = '6px 0';
         container.style.background = 'transparent';
@@ -187,11 +190,32 @@ class TileRenderer {
 
         bonusTiles.forEach(tile => {
             const tileElement = this.createTileElement(tile);
-            tileElement.style.width = '40px';
-            tileElement.style.height = '56px';
-            tileElement.style.fontSize = '14px';
             container.appendChild(tileElement);
         });
+
+        return container;
+    }
+
+    // Create side hand (backs of tiles)
+    createSideHandCount(count, side) {
+        const container = document.createElement('div');
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column'; // Stack vertically for side view
+        container.style.gap = '-40px'; // Overlap slightly for 3D effect
+
+        const imgPath = side === 'left' ? '/assets/tile_left.png' : '/assets/tile_right.png';
+        
+        for (let i = 0; i < count; i++) {
+            const img = document.createElement('img');
+            const sideWidth = 1.6; // vmin
+            const sideHeight = 3.2; // vmin
+            img.src = imgPath;
+            img.style.width = `${sideWidth}vmin`;
+            img.style.height = `${sideHeight}vmin`;
+            img.style.marginBottom = `-${sideHeight * 0.6}vmin`; // Stack effect
+            img.alt = 'tile back';
+            container.appendChild(img);
+        }
 
         return container;
     }

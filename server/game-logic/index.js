@@ -198,6 +198,47 @@ class MalaysiaMahjong3P {
 
             // Normal tile (replacement tile after skipping any bonuses)
             player.hand.push(tile);
+            
+            // --- Auto-Swap Logic: Check if drawn tile can replace a declared Wild Card in a meld ---
+            let swapMessage = '';
+            if (player.melds && player.melds.length > 0) {
+                for (const meld of player.melds) {
+                    if (meld.usesWildCards) {
+                        const wildTileIndex = meld.tiles.findIndex(t => t.isWild);
+                        if (wildTileIndex !== -1) {
+                            const wildTile = meld.tiles[wildTileIndex];
+                            const declKey = `${playerId}-${wildTile.id}`;
+                            const declaration = this.wildCardDeclarations.get(declKey);
+                            
+                            if (declaration && 
+                                declaration.declaredAs.type === tile.type && 
+                                declaration.declaredAs.value === tile.value) {
+                                
+                                console.log(`Game: Auto-swapping drawn ${tile.display} for wild card ${wildTile.id}`);
+                                
+                                // 1. Remove drawn tile from hand
+                                const tileInHandIdx = player.hand.findIndex(t => t.id === tile.id);
+                                if (tileInHandIdx !== -1) player.hand.splice(tileInHandIdx, 1);
+                                
+                                // 2. Add wild card to hand
+                                player.hand.push(wildTile);
+                                
+                                // 3. Update meld: replace wild with drawn tile
+                                meld.tiles[wildTileIndex] = tile;
+                                meld.usesWildCards = meld.tiles.some(t => t.isWild);
+                                
+                                // 4. Remove declaration
+                                this.wildCardDeclarations.delete(declKey);
+                                
+                                swapMessage = ` (Swapped for Wild Card)`;
+                                break; // Only perform one swap per draw
+                            }
+                        }
+                    }
+                }
+            }
+            // -------------------------------------------------------------------------------------
+
             player.hand = this.tileManager.sortHand(player.hand);
             
             console.log('Game:', player.name, 'drew', tile.display);
@@ -209,7 +250,7 @@ class MalaysiaMahjong3P {
                 bonusTiles: player.bonusTiles || [],
                 drawnBonusTiles: poppedBonuses,
                 dummyWallCount: this.wallManager.getDummyWallCount(),
-                message: `Drew ${tile.display}`
+                message: `Drew ${tile.display}${swapMessage}`
             };
             
         } catch (error) {

@@ -204,27 +204,34 @@ class TileManager {
     
     sortHand(tiles) {
         return tiles.sort((a, b) => {
-            const typeOrder = { 'dot': 1, 'wind': 2, 'dragon': 3 };
-            const windOrder = { 'East': 1, 'South': 2, 'West': 3 };
+            // Define a comprehensive order for all tile types
+            const typeOrder = { 'dot': 1, 'wind': 2, 'dragon': 3, 'flower': 4, 'season': 4, 'animal': 4, 'face': 4, 'wild': 5 };
+            const windOrder = { 'East': 1, 'South': 2, 'West': 3, 'North': 4 };
             const dragonOrder = { 'Red': 1, 'Green': 2, 'White': 3 };
             
-            if (typeOrder[a.type] !== typeOrder[b.type]) {
-                return typeOrder[a.type] - typeOrder[b.type];
+            const aTypeVal = typeOrder[a.type] || 99; // Place unknown types at the end
+            const bTypeVal = typeOrder[b.type] || 99;
+
+            if (aTypeVal !== bTypeVal) {
+                return aTypeVal - bTypeVal;
             }
             
+            // Within the same type, sort by value
             if (a.type === 'dot') {
                 return a.value - b.value;
             }
             
             if (a.type === 'wind') {
-                return windOrder[a.value] - windOrder[b.value];
+                return (windOrder[a.value] || 99) - (windOrder[b.value] || 99);
             }
             
             if (a.type === 'dragon') {
-                return dragonOrder[a.value] - dragonOrder[b.value];
+                return (dragonOrder[a.value] || 99) - (dragonOrder[b.value] || 99);
             }
             
-            return 0;
+            // For bonus tiles or others, sort by value if available, otherwise by ID
+            if (a.value && b.value) return a.value - b.value;
+            return (a.id || '').localeCompare(b.id || '');
         });
     }
     

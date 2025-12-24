@@ -84,56 +84,51 @@ class UIManager {
             
             game: `
                 <div class="screen" id="game">
-                    <h2><i class="fas fa-gamepad"></i> Game in Progress</h2>
-                    
-                    <div class="section">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-                            <div>
-                                <p><strong>Room:</strong> <span id="gameRoomId">---</span></p>
-                                <p><strong>Your Wind:</strong> <span id="seatWindDisplay">East</span></p>
-                            </div>
-                            <div>
-                                <p><strong>Dummy Wall:</strong> <span id="dummyWallCount">0</span> tiles</p>
-                                <p><strong>Current Turn:</strong> <span id="currentTurn">---</span></p>
-                            </div>
-                        </div>
+                    <div id="game-table" style="position: relative; width: 100%; height: 90vh; background: #2e7d32; overflow: hidden; border-radius: 8px;">
                         
-                        <div class="btn-container">
-                            <button id="endGameBtn" class="btn btn-danger">
-                                <i class="fas fa-flag"></i> End Game
-                            </button>
+                        <!-- Info Overlay -->
+                        <div style="position: absolute; top: 10px; left: 10px; color: white; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; z-index: 10;">
+                            <div>Room: <span id="gameRoomId">---</span></div>
+                            <div>Wall: <span id="dummyWallCount">0</span> | Turn: <span id="currentTurn">---</span></div>
+                            <button id="endGameBtn" class="btn btn-sm btn-danger" style="margin-top:5px;">Exit</button>
                         </div>
-                    </div>
-                    
-                    <div class="section">
-                        <h3><i class="fas fa-users"></i> Players</h3>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-top: 15px;">
-                            <div>
-                                <h4 id="opponent1Name">Player 1</h4>
-                                <p>Tiles: <span id="opponent1Tiles">13</span></p>
-                            </div>
-                            <div>
-                                <h4 id="playerNameDisplay">You</h4>
-                                <p>Tiles: <span id="playerTileCount">13</span></p>
-                            </div>
-                            <div>
-                                <h4 id="opponent2Name">Player 2</h4>
-                                <p>Tiles: <span id="opponent2Tiles">13</span></p>
-                            </div>
+
+                        <!-- Center: Discards -->
+                        <div id="center-area" style="position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); width: 400px; height: 300px; display: flex; justify-content: center; align-items: center;">
+                            <div id="discardPile" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; max-width: 360px;"></div>
                         </div>
-                    </div>
-                    
-                    <div class="section">
-                        <h3><i class="fas fa-trash-alt"></i> Discard Pile</h3>
-                        <div id="discardPile" style="min-height: 80px; margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px;">
-                            <!-- Discarded tiles appear here -->
+
+                        <!-- Left Player (Previous/Upper) -->
+                        <div id="player-left" style="position: absolute; left: 20px; top: 40%; transform: translateY(-50%); display: flex; flex-direction: row; align-items: center;">
+                            <!-- Hand (Vertical/Hidden) -->
+                            <div id="hand-left" class="side-hand" style="display: flex; flex-direction: column; gap: -10px;"></div>
+                            <!-- Melds/Bonus (Rotated 90deg) -->
+                            <div id="melds-bonus-left" style="display: flex; flex-direction: column; gap: 5px; margin-left: 20px; transform: rotate(90deg);"></div>
+                            <div id="name-left" style="position: absolute; top: -40px; left: 0; color: white; font-weight: bold; width: 150px;"></div>
                         </div>
-                    </div>
-                    
-                    <div class="section" style="border: 2px solid #00adb5;">
-                        <h3><i class="fas fa-hand-paper"></i> Your Hand</h3>
-                        <div id="currentHand" style="min-height: 100px; margin: 15px 0; display: flex; flex-wrap: wrap; gap: 5px;">
-                            <!-- Your tiles appear here -->
+
+                        <!-- Right Player (Next/Lower) -->
+                        <div id="player-right" style="position: absolute; right: 20px; top: 40%; transform: translateY(-50%); display: flex; flex-direction: row-reverse; align-items: center;">
+                            <!-- Hand (Vertical/Hidden) -->
+                            <div id="hand-right" class="side-hand" style="display: flex; flex-direction: column; gap: -10px;"></div>
+                            <!-- Melds/Bonus (Rotated -90deg) -->
+                            <div id="melds-bonus-right" style="display: flex; flex-direction: column; gap: 5px; margin-right: 20px; transform: rotate(-90deg);"></div>
+                            <div id="name-right" style="position: absolute; top: -40px; right: 0; color: white; font-weight: bold; width: 150px; text-align: right;"></div>
+                        </div>
+
+                        <!-- Me (Bottom) -->
+                        <div id="player-me" style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; display: flex; flex-direction: column; align-items: center;">
+                            <!-- Melds/Bonus -->
+                            <div id="melds-bonus-me" style="display: flex; gap: 10px; margin-bottom: 15px;"></div>
+                            
+                            <!-- Hand -->
+                            <div id="currentHand" style="display: flex; justify-content: center; align-items: flex-end; height: 80px;">
+                                <!-- Tiles injected here -->
+                            </div>
+                            
+                            <div style="color: white; margin-top: 5px; font-weight: bold;">
+                                <span id="playerNameDisplay">You</span> (<span id="seatWindDisplay">-</span>)
+                            </div>
                         </div>
                     </div>
                     
@@ -414,87 +409,98 @@ class UIManager {
     updateGameDisplay(data) {
         this.setElementText('dummyWallCount', data.dummyWallCount);
         
-        const players = data.players || [];
-        if (players.length >= 3) {
-            // Find our position
-            const ourIndex = players.findIndex(p => p.id === this.gameManager.playerId);
-            
-            if (ourIndex === 0) {
-                this.setElementText('playerNameDisplay', `${this.gameManager.playerName} (East)`);
-                this.setElementText('opponent1Name', `${players[1].name} (South)`);
-                this.setElementText('opponent2Name', `${players[2].name} (West)`);
-                this.setElementText('seatWindDisplay', 'East');
-            } else if (ourIndex === 1) {
-                this.setElementText('playerNameDisplay', `${this.gameManager.playerName} (South)`);
-                this.setElementText('opponent1Name', `${players[0].name} (East)`);
-                this.setElementText('opponent2Name', `${players[2].name} (West)`);
-                this.setElementText('seatWindDisplay', 'South');
-            } else {
-                this.setElementText('playerNameDisplay', `${this.gameManager.playerName} (West)`);
-                this.setElementText('opponent1Name', `${players[0].name} (East)`);
-                this.setElementText('opponent2Name', `${players[1].name} (South)`);
-                this.setElementText('seatWindDisplay', 'West');
-            }
-        }
+        const players = this.gameManager.players || [];
+        if (players.length < 3) return;
 
-        // Update bonus tiles display FOR ALL PLAYERS
-        if (data.bonusTiles && players && players.length > 0) {
-            let parent = document.getElementById('bonusTilesDisplay');
-            if (!parent) {
-                const gameScreen = document.getElementById('game');
-                if (gameScreen) {
-                    parent = document.createElement('div');
-                    parent.id = 'bonusTilesDisplay';
-                    parent.style.margin = '10px 0';
-                    parent.style.padding = '10px';
-                    parent.style.background = 'rgba(255, 255, 255, 0.03)';
-                    parent.style.borderRadius = '8px';
-                    parent.innerHTML = '<h4>Bonus Tiles (by player)</h4>';
-                    gameScreen.insertBefore(parent, gameScreen.querySelector('.section:last-child'));
-                }
-            }
+        const myId = this.gameManager.playerId;
+        const myIndex = players.findIndex(p => p.id === myId);
+        if (myIndex === -1) return;
 
-            if (parent) {
-                const title = parent.querySelector('h4') || document.createElement('h4');
-                title.textContent = 'Bonus Tiles (by player)';
-                parent.innerHTML = '';
-                parent.appendChild(title);
+        // Calculate relative positions
+        // Right = Next Player (Counter-Clockwise)
+        const rightIndex = (myIndex + 1) % 3;
+        // Left = Previous Player
+        const leftIndex = (myIndex - 1 + 3) % 3;
 
-                players.forEach(p => {
-                    const bonusForPlayer = (data.bonusTiles && data.bonusTiles[p.id]) ? data.bonusTiles[p.id] : [];
-                    const playerDiv = document.createElement('div');
-                    playerDiv.id = `bonus-${p.id}`;
-                    playerDiv.style.marginTop = '8px';
-                    playerDiv.style.padding = '6px';
-                    playerDiv.style.borderTop = '1px solid rgba(255,255,255,0.04)';
-                    playerDiv.style.display = 'flex';
-                    playerDiv.style.alignItems = 'center';
-                    playerDiv.style.gap = '12px';
+        const me = players[myIndex];
+        const rightPlayer = players[rightIndex];
+        const leftPlayer = players[leftIndex];
 
-                    const nameSpan = document.createElement('div');
-                    nameSpan.style.minWidth = '160px';
-                    nameSpan.style.fontWeight = '600';
-                    nameSpan.style.color = '#fff';
-                    const displayName = (p.id === this.gameManager.playerId) ? `${p.name} (You)` : p.name;
-                    nameSpan.textContent = `${displayName} — ${p.seatWind || ''}`;
+        // Update Me
+        this.setElementText('playerNameDisplay', me.name);
+        this.setElementText('seatWindDisplay', me.seatWind);
+        this.renderPlayerMeldsAndBonus(me.id, 'me');
 
-                    const bonusDisplay = this.tileRenderer.createBonusTileDisplay(bonusForPlayer);
-                    bonusDisplay.style.display = 'flex';
-                    bonusDisplay.style.flexWrap = 'wrap';
-                    bonusDisplay.style.gap = '6px';
+        // Update Left
+        this.setElementText('name-left', `${leftPlayer.name} (${leftPlayer.seatWind})`);
+        this.renderSideHand('hand-left', leftPlayer.handCount || 13, 'left');
+        this.renderPlayerMeldsAndBonus(leftPlayer.id, 'left');
 
-                    playerDiv.appendChild(nameSpan);
-                    playerDiv.appendChild(bonusDisplay);
-
-                    parent.appendChild(playerDiv);
-                });
-            }
-        }
+        // Update Right
+        this.setElementText('name-right', `${rightPlayer.name} (${rightPlayer.seatWind})`);
+        this.renderSideHand('hand-right', rightPlayer.handCount || 13, 'right');
+        this.renderPlayerMeldsAndBonus(rightPlayer.id, 'right');
 
         // Update dummy wall count
         this.updateDummyWallCount(data.dummyWallCount);
     }
 
+    // Render side player's hand (backs of tiles)
+    renderSideHand(elementId, count, side) {
+        const container = document.getElementById(elementId);
+        if (!container) return;
+        container.innerHTML = '';
+        
+        // Create stack of tile backs
+        const handDiv = this.tileRenderer.createSideHandCount(count, side);
+        container.appendChild(handDiv);
+    }
+
+    // Render combined Melds and Bonus Tiles for a player
+    renderPlayerMeldsAndBonus(playerId, position = null) {
+        // If position not passed, determine it
+        if (!position) {
+            const players = this.gameManager.players;
+            const myIndex = players.findIndex(p => p.id === this.gameManager.playerId);
+            const pIndex = players.findIndex(p => p.id === playerId);
+            if (pIndex === myIndex) position = 'me';
+            else if (pIndex === (myIndex + 1) % 3) position = 'right';
+            else position = 'left';
+        }
+
+        const containerId = `melds-bonus-${position}`;
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = '';
+
+        const player = this.gameManager.players.find(p => p.id === playerId);
+        const bonusTiles = this.gameManager.bonusTiles[playerId] || [];
+        const melds = player ? (player.melds || []) : [];
+
+        // Render Bonus Tiles first
+        if (bonusTiles.length > 0) {
+            const bonusDiv = this.tileRenderer.createBonusTileDisplay(bonusTiles);
+            // Remove default margins for tight fit
+            bonusDiv.style.margin = '0';
+            container.appendChild(bonusDiv);
+        }
+
+        // Render Melds
+        melds.forEach(meld => {
+            const meldDiv = document.createElement('div');
+            meldDiv.className = 'meld-group';
+            meldDiv.style.display = 'flex';
+            meldDiv.style.gap = '0'; // stick together
+            meldDiv.style.marginLeft = '10px'; // separate melds slightly
+
+            meld.tiles.forEach(tile => {
+                const el = this.tileRenderer.createTileElement(tile);
+                el.style.margin = '0';
+                meldDiv.appendChild(el);
+            });
+            container.appendChild(meldDiv);
+        });
+    }
 
     // Add to UIManager class:
     showWildCardDeclaration(wildCard, onDeclareCallback) {
@@ -519,109 +525,14 @@ class UIManager {
 
     // Update a single player's bonus tiles
     updateBonusTilesDisplay(playerId, bonusTiles) {
-        let parent = document.getElementById('bonusTilesDisplay');
-        if (!parent) {
-            const gameScreen = document.getElementById('game');
-            if (gameScreen) {
-                parent = document.createElement('div');
-                parent.id = 'bonusTilesDisplay';
-                parent.style.margin = '10px 0';
-                parent.style.padding = '10px';
-                parent.style.background = 'rgba(255, 255, 255, 0.03)';
-                parent.style.borderRadius = '8px';
-                parent.innerHTML = '<h4>Bonus Tiles (by player)</h4>';
-                gameScreen.insertBefore(parent, gameScreen.querySelector('.section:last-child'));
-            }
-        }
-
-        let playerDiv = document.getElementById(`bonus-${playerId}`);
-        if (!playerDiv) {
-            playerDiv = document.createElement('div');
-            playerDiv.id = `bonus-${playerId}`;
-            playerDiv.style.marginTop = '8px';
-            playerDiv.style.padding = '6px';
-            playerDiv.style.borderTop = '1px solid rgba(255,255,255,0.04)';
-            playerDiv.style.display = 'flex';
-            playerDiv.style.alignItems = 'center';
-            playerDiv.style.gap = '12px';
-            parent.appendChild(playerDiv);
-        } else {
-            playerDiv.innerHTML = '';
-        }
-
-        const playerObj = this.gameManager.players.find(p => p.id === playerId) || { name: 'Unknown', seatWind: '' };
-        const nameSpan = document.createElement('div');
-        nameSpan.style.minWidth = '160px';
-        nameSpan.style.fontWeight = '600';
-        nameSpan.style.color = '#fff';
-        const displayName = (playerId === this.gameManager.playerId) ? `${playerObj.name} (You)` : playerObj.name;
-        nameSpan.textContent = `${displayName} — ${playerObj.seatWind || ''}`;
-
-        const bonusDisplay = this.tileRenderer.createBonusTileDisplay(bonusTiles);
-        bonusDisplay.style.display = 'flex';
-        bonusDisplay.style.flexWrap = 'wrap';
-        bonusDisplay.style.gap = '6px';
-
-        playerDiv.appendChild(nameSpan);
-        playerDiv.appendChild(bonusDisplay);
+        // Delegated to renderPlayerMeldsAndBonus via GameManager state update
+        this.renderPlayerMeldsAndBonus(playerId);
     }
 
     // Add meld to UI; render meld tiles using the same compact tile renderer used for bonus tiles
     addMeld(playerId, meld) {
-        // create parent if missing
-        let parent = document.getElementById('meldsArea');
-        if (!parent) {
-            const gameScreen = document.getElementById('game');
-            if (!gameScreen) return;
-            parent = document.createElement('div');
-            parent.id = 'meldsArea';
-            parent.style.margin = '10px 0';
-            parent.innerHTML = '<h4>Melds</h4>';
-            gameScreen.insertBefore(parent, gameScreen.querySelector('.section:last-child'));
-        }
-
-        // find or create player's meld row
-        let playerRow = document.getElementById(`melds-${playerId}`);
-        if (!playerRow) {
-            playerRow = document.createElement('div');
-            playerRow.id = `melds-${playerId}`;
-            playerRow.style.display = 'flex';
-            playerRow.style.flexDirection = 'column';
-            playerRow.style.gap = '6px';
-            playerRow.style.marginTop = '8px';
-            parent.appendChild(playerRow);
-        }
-
-        // Build one meld entry (do not duplicate existing identical melds)
-        const meldEntry = document.createElement('div');
-        meldEntry.style.display = 'flex';
-        meldEntry.style.alignItems = 'center';
-        meldEntry.style.gap = '8px';
-        meldEntry.style.padding = '6px 0';
-
-        const ownerName = this.gameManager.players.find(p => p.id === playerId)?.name || (playerId === this.gameManager.playerId ? 'You' : `Player ${playerId?.slice(0,4)}`);
-        const label = document.createElement('div');
-        label.textContent = `${ownerName} ${meld.type.toUpperCase()}:`;
-        label.style.minWidth = '120px';
-        label.style.fontWeight = '600';
-        label.style.color = '#fff';
-
-        const tilesContainer = document.createElement('div');
-        tilesContainer.style.display = 'flex';
-        tilesContainer.style.gap = '6px';
-
-        meld.tiles.forEach(tile => {
-            const el = this.tileRenderer.createTileElement(tile);
-            el.style.width = '36px';
-            el.style.height = '48px';
-            el.style.fontSize = '12px';
-            tilesContainer.appendChild(el);
-        });
-
-        meldEntry.appendChild(label);
-        meldEntry.appendChild(tilesContainer);
-
-        playerRow.appendChild(meldEntry);
+        // Delegated to renderPlayerMeldsAndBonus via GameManager state update
+        this.renderPlayerMeldsAndBonus(playerId);
     }
     updateDummyWallCount(count) {
         this.setElementText('dummyWallCount', count);
@@ -639,21 +550,37 @@ class UIManager {
             handContainer.innerHTML = '<p>No tiles in hand</p>';
             return;
         }
-        
-        hand.forEach(tile => {
-            const tileElement = this.tileRenderer.createTileElement(tile, true);
-            
-            // Add click handler for wild cards
-            if (tile.isWild) {
-                tileElement.onclick = () => {
-                    this.handleWildCardClick(tile);
-                };
+
+        // Separate the last drawn tile if it exists
+        let tilesToRender = [...hand];
+        let drawnTile = null;
+
+        if (this.gameManager.lastDrawnTileId) {
+            const idx = tilesToRender.findIndex(t => t.id === this.gameManager.lastDrawnTileId);
+            if (idx !== -1) {
+                drawnTile = tilesToRender.splice(idx, 1)[0];
             }
-            
+        }
+
+        // Render sorted hand
+        tilesToRender.forEach(tile => {
+            const tileElement = this.tileRenderer.createTileElement(tile, true);
+            if (tile.isWild) tileElement.onclick = () => this.handleWildCardClick(tile);
             handContainer.appendChild(tileElement);
         });
+
+        // Render drawn tile with gap
+        if (drawnTile) {
+            const spacer = document.createElement('div');
+            spacer.style.width = '15px'; // Gap
+            handContainer.appendChild(spacer);
+
+            const tileElement = this.tileRenderer.createTileElement(drawnTile, true);
+            if (drawnTile.isWild) tileElement.onclick = () => this.handleWildCardClick(drawnTile);
+            handContainer.appendChild(tileElement);
+        }
         
-        document.getElementById('playerTileCount').textContent = hand.length;
+        // document.getElementById('playerTileCount').textContent = hand.length; // Removed as layout changed
     }
     
 
@@ -688,6 +615,7 @@ class UIManager {
         if (!discardPile) return;
         
         const tileElement = this.tileRenderer.createTileElement(tile);
+        tileElement.style.margin = '1px'; // Tighter discard pile
         discardPile.appendChild(tileElement);
         
         if (discardPile.children.length > 20) {

@@ -113,6 +113,7 @@ class GameManager {
     
     discardTile(tileId) {
         if (this.roomId && tileId) {
+            if (!this.canDiscard) return; // Prevent double discard or discard when not allowed
             console.log('GameManager: Discarding tile', tileId);
             this.canDiscard = false; // Prevent double discard
             this.lastDrawnTileId = null; // Reset drawn tile separation on discard

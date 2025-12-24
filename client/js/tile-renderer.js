@@ -258,66 +258,19 @@ class TileRenderer {
         container.appendChild(danFeiBtn);
         // ---------------------------
 
-        const title = document.createElement('h3');
-        title.textContent = 'Declare Wild Card As:';
-        title.style.color = '#fff';
-        title.style.textAlign = 'center';
-        title.style.marginBottom = '12px';
-        container.appendChild(title);
-
-        const optionsContainer = document.createElement('div');
-        optionsContainer.style.display = 'grid';
-        optionsContainer.style.gridTemplateColumns = 'repeat(3, 1fr)';
-        optionsContainer.style.gap = '8px';
-        optionsContainer.style.marginBottom = '12px';
-
-        // Dots 1-9 (neutral)
-        for (let i = 1; i <= 9; i++) {
-            const option = document.createElement('button');
-            option.textContent = `${i}筒`;
-            option.style.padding = '8px';
-            option.style.background = '#fff';
-            option.style.color = '#000';
-            option.style.border = '1px solid rgba(0,0,0,0.15)';
-            option.style.borderRadius = '6px';
-            option.style.cursor = 'pointer';
-            option.onclick = () => onDeclare('dot', i);
-            optionsContainer.appendChild(option);
-        }
-
-        // Winds (neutral)
-        const winds = ['東', '南', '西', '北'];
-        const windValues = ['East', 'South', 'West', 'North'];
-        winds.forEach((wind, index) => {
-            const option = document.createElement('button');
-            option.textContent = wind;
-            option.style.padding = '8px';
-            option.style.background = '#fff';
-            option.style.color = '#000';
-            option.style.border = '1px solid rgba(0,0,0,0.15)';
-            option.style.borderRadius = '6px';
-            option.style.cursor = 'pointer';
-            option.onclick = () => onDeclare('wind', windValues[index]);
-            optionsContainer.appendChild(option);
-        });
-
-        // Dragons (neutral)
-        const dragons = ['中', '發', '白'];
-        const dragonValues = ['Red', 'Green', 'White'];
-        dragons.forEach((dragon, index) => {
-            const option = document.createElement('button');
-            option.textContent = dragon;
-            option.style.padding = '8px';
-            option.style.background = '#fff';
-            option.style.color = '#000';
-            option.style.border = '1px solid rgba(0,0,0,0.15)';
-            option.style.borderRadius = '6px';
-            option.style.cursor = 'pointer';
-            option.onclick = () => onDeclare('dragon', dragonValues[index]);
-            optionsContainer.appendChild(option);
-        });
-
-        container.appendChild(optionsContainer);
+        // Discard button
+        const discardBtn = document.createElement('button');
+        discardBtn.textContent = 'Discard Tile';
+        discardBtn.style.padding = '10px 20px';
+        discardBtn.style.background = '#607D8B'; // Grey/Blue
+        discardBtn.style.color = 'white';
+        discardBtn.style.border = 'none';
+        discardBtn.style.borderRadius = '6px';
+        discardBtn.style.cursor = 'pointer';
+        discardBtn.style.width = '100%';
+        discardBtn.style.marginBottom = '10px';
+        discardBtn.onclick = () => onDeclare('discard', null);
+        container.appendChild(discardBtn);
 
         // Cancel button
         const cancelBtn = document.createElement('button');

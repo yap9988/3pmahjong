@@ -625,7 +625,10 @@ class UIManager {
         // Render sorted hand
         tilesToRender.forEach(tile => {
             const tileElement = this.tileRenderer.createTileElement(tile, true);
-            if (tile.isWild) tileElement.onclick = () => this.handleWildCardClick(tile);
+            if (tile.isWild) tileElement.onclick = (e) => {
+                e.stopPropagation(); // Prevent global event handler from discarding immediately
+                this.handleWildCardClick(tile);
+            };
             handContainer.appendChild(tileElement);
         });
 
@@ -636,7 +639,10 @@ class UIManager {
             handContainer.appendChild(spacer);
 
             const tileElement = this.tileRenderer.createTileElement(drawnTile, true);
-            if (drawnTile.isWild) tileElement.onclick = () => this.handleWildCardClick(drawnTile);
+            if (drawnTile.isWild) tileElement.onclick = (e) => {
+                e.stopPropagation();
+                this.handleWildCardClick(drawnTile);
+            };
             handContainer.appendChild(tileElement);
         }
         
@@ -654,6 +660,9 @@ class UIManager {
             if (tileType === 'danfei') {
                 console.log('Declaring Dan Fei for:', wildCardId);
                 this.gameManager.declareDanFei(wildCardId);
+            } else if (tileType === 'discard') {
+                console.log('Discarding wild card:', wildCardId);
+                this.gameManager.discardTile(wildCardId);
             } else {
                 console.log('Declaring wild card as:', tileType, tileValue);
                 if (this.gameManager.declareWildCard) {
@@ -664,8 +673,12 @@ class UIManager {
     }
 
     makeTilesDiscardable(hand, discardCallback) {
-        const tiles = document.querySelectorAll('.tile');
+        // Only select tiles in the current hand, not discard pile or opponents
+        const tiles = document.querySelectorAll('#currentHand .tile');
         tiles.forEach(tile => {
+            // Skip wild cards, they have their own handler set in renderCurrentHand
+            if (tile.dataset.type === 'wild') return;
+
             tile.onclick = () => {
                 const tileId = tile.dataset.id;
                 if (tileId) {

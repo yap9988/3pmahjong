@@ -220,18 +220,38 @@ class GameManager {
         }, 100);
     }    
 
-    
     onTileDrawn(data) {
         if (data.error) {
             this.uiManager.showMessage('gameMessage', data.error, 'error');
             return;
         }
-        
+
+        // Update hand and UI
         this.setCurrentHand(data.hand);
         this.uiManager.renderCurrentHand(this.currentHand);
-        this.uiManager.updateDummyWallCount(data.dummyWallCount);
-        
-        this.uiManager.showMessage('gameMessage', `You drew: ${data.tile.display}. Click a tile to discard.`, 'info');
+
+        // Update dummy wall counter
+        if (typeof data.dummyWallCount !== 'undefined') {
+            this.uiManager.updateDummyWallCount(data.dummyWallCount);
+        }
+
+        // If server provided bonusTiles for this player, update bonus tiles UI
+        if (data.bonusTiles && Array.isArray(data.bonusTiles)) {
+            // Ensure the client's bonus area for THIS player is updated
+            this.uiManager.updateBonusTilesDisplay(this.playerId, data.bonusTiles || []);
+            if (data.bonusTiles.length > 0) {
+                const names = data.bonusTiles.map(t => t.display || t.chinese || t.id).join(', ');
+                this.uiManager.showMessage('gameMessage', `You received bonus tiles: ${names}. Click a tile to discard.`, 'success');
+            } else {
+                // Normal draw with no bonus popped
+                this.uiManager.showMessage('gameMessage', `You drew: ${data.tile ? data.tile.display : 'a tile'}. Click a tile to discard.`, 'info');
+            }
+        } else {
+            // Fallback: show tile name if provided
+            this.uiManager.showMessage('gameMessage', `You drew: ${data.tile ? data.tile.display : 'a tile'}. Click a tile to discard.`, 'info');
+        }
+
+        // Make tiles discardable so the player can end their turn
         this.uiManager.makeTilesDiscardable(this.currentHand, (tileId) => this.discardTile(tileId));
     }
     
@@ -305,7 +325,7 @@ class GameManager {
         }
     }
 
-    // Handler for the special kong draw sent to the kong player
+    // Handler for the special kongDraw event (server sends this after a kong)
     onKongDraw(data) {
         console.log('GameManager: onKongDraw', data);
         if (!data) return;
@@ -315,19 +335,29 @@ class GameManager {
             this.setCurrentHand(data.hand);
             this.uiManager.renderCurrentHand(this.currentHand);
         } else if (data.tile) {
-            // add tile to our current hand view if server didn't send full hand
+            // if only tile provided, add it then render
             this.currentHand.push(data.tile);
             this.uiManager.renderCurrentHand(this.currentHand);
         }
 
-        // Show the special message "You kong! You drew X. Please discard one tile"
+        // Update dummy wall count if present
+        if (typeof data.dummyWallCount !== 'undefined') {
+            this.uiManager.updateDummyWallCount(data.dummyWallCount);
+        }
+
+        // Update bonus tiles if provided
+        if (data.bonusTiles && Array.isArray(data.bonusTiles)) {
+            this.uiManager.updateBonusTilesDisplay(this.playerId, data.bonusTiles || []);
+        }
+
+        // Show the special message for kong draw
         const tileName = data.tile ? data.tile.display : (data.message || 'a tile');
         this.uiManager.showMessage('gameMessage', `You konged — you drew ${tileName}. Please discard one tile.`, 'success');
 
-        // Enable discarding so player can pick tile to discard and finish turn
+        // Make tiles discardable so player can discard to finish their turn
         this.uiManager.makeTilesDiscardable(this.currentHand, (tileId) => this.discardTile(tileId));
     }
-
+    
     // Updated pung check: consider wild (fei) tiles in our hand
     checkPungOpportunity(discardedTile, fromPlayerId) {
         if (fromPlayerId === this.playerId) return false;

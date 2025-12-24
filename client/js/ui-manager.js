@@ -563,73 +563,63 @@ class UIManager {
         playerDiv.appendChild(bonusDisplay);
     }
 
-    // Ensure a melds area exists; create per-player meld container if needed and append the meld
+    // Add meld to UI; render meld tiles using the same compact tile renderer used for bonus tiles
     addMeld(playerId, meld) {
-        // Create parent container if missing
+        // create parent if missing
         let parent = document.getElementById('meldsArea');
         if (!parent) {
             const gameScreen = document.getElementById('game');
-            if (gameScreen) {
-                parent = document.createElement('div');
-                parent.id = 'meldsArea';
-                parent.style.margin = '10px 0';
-                parent.style.padding = '10px';
-                parent.style.background = 'rgba(255,255,255,0.02)';
-                parent.style.borderRadius = '8px';
-                parent.innerHTML = '<h4>Melds</h4>';
-                // Insert before the game action buttons area or append near other sections
-                gameScreen.insertBefore(parent, gameScreen.querySelector('.section:last-child'));
-            }
+            if (!gameScreen) return;
+            parent = document.createElement('div');
+            parent.id = 'meldsArea';
+            parent.style.margin = '10px 0';
+            parent.innerHTML = '<h4>Melds</h4>';
+            gameScreen.insertBefore(parent, gameScreen.querySelector('.section:last-child'));
         }
 
-        if (!parent) return;
-
-        // Create or get player's meld container
-        let playerDiv = document.getElementById(`melds-${playerId}`);
-        if (!playerDiv) {
-            playerDiv = document.createElement('div');
-            playerDiv.id = `melds-${playerId}`;
-            playerDiv.style.marginTop = '8px';
-            playerDiv.style.padding = '6px';
-            playerDiv.style.display = 'flex';
-            playerDiv.style.alignItems = 'center';
-            playerDiv.style.gap = '8px';
-            parent.appendChild(playerDiv);
+        // find or create player's meld row
+        let playerRow = document.getElementById(`melds-${playerId}`);
+        if (!playerRow) {
+            playerRow = document.createElement('div');
+            playerRow.id = `melds-${playerId}`;
+            playerRow.style.display = 'flex';
+            playerRow.style.flexDirection = 'column';
+            playerRow.style.gap = '6px';
+            playerRow.style.marginTop = '8px';
+            parent.appendChild(playerRow);
         }
 
-        // Add a label for owner
+        // Build one meld entry (do not duplicate existing identical melds)
+        const meldEntry = document.createElement('div');
+        meldEntry.style.display = 'flex';
+        meldEntry.style.alignItems = 'center';
+        meldEntry.style.gap = '8px';
+        meldEntry.style.padding = '6px 0';
+
         const ownerName = this.gameManager.players.find(p => p.id === playerId)?.name || (playerId === this.gameManager.playerId ? 'You' : `Player ${playerId?.slice(0,4)}`);
         const label = document.createElement('div');
-        label.textContent = `${ownerName} meld:`;
+        label.textContent = `${ownerName} ${meld.type.toUpperCase()}:`;
         label.style.minWidth = '120px';
         label.style.fontWeight = '600';
         label.style.color = '#fff';
 
-        // Meld tiles container
-        const meldContainer = document.createElement('div');
-        meldContainer.style.display = 'flex';
-        meldContainer.style.gap = '6px';
+        const tilesContainer = document.createElement('div');
+        tilesContainer.style.display = 'flex';
+        tilesContainer.style.gap = '6px';
 
-        // Render each tile in the meld as a small tile element
-        (meld.tiles || []).forEach(tile => {
-            const tileEl = this.tileRenderer.createTileElement(tile);
-            tileEl.style.width = '36px';
-            tileEl.style.height = '48px';
-            tileEl.style.fontSize = '12px';
-            meldContainer.appendChild(tileEl);
+        meld.tiles.forEach(tile => {
+            const el = this.tileRenderer.createTileElement(tile);
+            el.style.width = '36px';
+            el.style.height = '48px';
+            el.style.fontSize = '12px';
+            tilesContainer.appendChild(el);
         });
 
-        // A simple entry for this meld — append to playerDiv
-        const entry = document.createElement('div');
-        entry.style.display = 'flex';
-        entry.style.alignItems = 'center';
-        entry.style.gap = '8px';
-        entry.appendChild(label);
-        entry.appendChild(meldContainer);
+        meldEntry.appendChild(label);
+        meldEntry.appendChild(tilesContainer);
 
-        playerDiv.appendChild(entry);
-    }    
-
+        playerRow.appendChild(meldEntry);
+    }
     updateDummyWallCount(count) {
         this.setElementText('dummyWallCount', count);
     }
@@ -723,11 +713,12 @@ class UIManager {
         }, 5000);
     }
 
-
-
     showKongButton(tile, kongCallback) {
         const kongBtn = document.getElementById('kongBtn');
         if (!kongBtn) return;
+
+        // Cancel any previous auto-hide
+        this._clearOpportunityTimeout();
 
         kongBtn.classList.remove('hidden');
         kongBtn.disabled = false;
@@ -735,17 +726,18 @@ class UIManager {
         kongBtn.onclick = () => {
             kongCallback();
             this.hideKongButton();
+            this._clearOpportunityTimeout();
         };
 
-        this.showMessage('gameMessage', `You can KONG ${tile.display || tile.value}! Click within 5 seconds.`, 'success');
+        this.showMessage('gameMessage', `You can KONG ${tile.display || tile.value}! Click to choose within 5 seconds.`, 'success');
 
-        // Auto-hide after 5 seconds
-        setTimeout(() => {
+        // Auto-hide after 5 seconds but store id so we can clear if player responds
+        this._oppTimeout = setTimeout(() => {
             this.hideKongButton();
             this.showMessage('gameMessage', 'Kong opportunity passed.', 'info');
+            this._oppTimeout = null;
         }, 5000);
     }
-
     
     hidePungButton() {
         const pungBtn = document.getElementById('pungBtn');
@@ -756,6 +748,7 @@ class UIManager {
         }
     }
 
+
     hideKongButton() {
         const kongBtn = document.getElementById('kongBtn');
         if (kongBtn) {
@@ -763,8 +756,78 @@ class UIManager {
             kongBtn.disabled = true;
             kongBtn.innerHTML = `<i class="fas fa-layer-group"></i> Kong!`;
         }
+        this._clearOpportunityTimeout();
     }
-    
+
+    // Render a modal of choices for kong combinations. options = [{ usedTileIds, label }]
+    showKongOptionsModal(discardedTile, options, onSelect) {
+        // remove existing modal
+        const existing = document.querySelector('.kong-options-modal');
+        if (existing) existing.remove();
+
+        const modal = document.createElement('div');
+        modal.className = 'kong-options-modal';
+        modal.style.position = 'fixed';
+        modal.style.top = '50%';
+        modal.style.left = '50%';
+        modal.style.transform = 'translate(-50%, -50%)';
+        modal.style.background = 'rgba(0,0,0,0.95)';
+        modal.style.padding = '18px';
+        modal.style.borderRadius = '12px';
+        modal.style.zIndex = '2000';
+        modal.style.minWidth = '320px';
+        modal.style.color = '#fff';
+
+        const title = document.createElement('h3');
+        title.textContent = `Kong options for ${discardedTile.display || discardedTile.value}`;
+        title.style.marginBottom = '12px';
+        modal.appendChild(title);
+
+        options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.textContent = opt.label + ` (use ${opt.usedTileIds.length} tile(s))`;
+            btn.style.display = 'block';
+            btn.style.width = '100%';
+            btn.style.margin = '6px 0';
+            btn.style.padding = '8px';
+            btn.style.borderRadius = '6px';
+            btn.style.cursor = 'pointer';
+            btn.onclick = () => {
+                onSelect(opt.usedTileIds);
+                modal.remove();
+            };
+            modal.appendChild(btn);
+        });
+
+        // fallback option: use all available (emit without usedTileIds)
+        const fallback = document.createElement('button');
+        fallback.textContent = 'Auto-select (server chooses)';
+        fallback.style.display = 'block';
+        fallback.style.width = '100%';
+        fallback.style.margin = '6px 0';
+        fallback.style.padding = '8px';
+        fallback.style.borderRadius = '6px';
+        fallback.style.cursor = 'pointer';
+        fallback.onclick = () => {
+            onSelect(null);
+            modal.remove();
+        };
+        modal.appendChild(fallback);
+
+        const cancel = document.createElement('button');
+        cancel.textContent = 'Cancel';
+        cancel.style.display = 'block';
+        cancel.style.width = '100%';
+        cancel.style.margin = '6px 0';
+        cancel.style.padding = '8px';
+        cancel.style.borderRadius = '6px';
+        cancel.style.cursor = 'pointer';
+        cancel.onclick = () => modal.remove();
+        modal.appendChild(cancel);
+
+        document.body.appendChild(modal);
+    }    
+
     // Helper methods
     setElementText(elementId, text) {
         const element = document.getElementById(elementId);
@@ -782,7 +845,13 @@ class UIManager {
 
 
 
-
+    // Track opportunity timeout to allow clearing it
+    _clearOpportunityTimeout() {
+        if (this._oppTimeout) {
+            clearTimeout(this._oppTimeout);
+            this._oppTimeout = null;
+        }
+    }
 
 
 

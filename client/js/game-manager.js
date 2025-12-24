@@ -235,64 +235,98 @@ class GameManager {
         this.uiManager.makeTilesDiscardable(this.currentHand, (tileId) => this.discardTile(tileId));
     }
     
-
+    // When a discard occurs, we already call checkKongOpportunity; if true request options
     onTileDiscarded(data) {
-        // Server emitted discard info to all clients
+        // existing behavior...
         this.uiManager.addToDiscardPile(data.tile);
         this.turnManager.updateTurnState(data.currentPlayer);
 
-        // If we are the one who discarded, don't show pung/kong for self
         if (data.playerId === this.playerId) return;
 
-        // Check for pung/kong opportunity considering wild cards (fei)
-        const canPung = this.checkPungOpportunity(data.tile, data.playerId);
-        if (canPung) {
-            this.uiManager.showPungButton(data.tile, () => this.declarePung(data.tile.id));
-        } else {
-            this.uiManager.hidePungButton();
-        }
+        // Pung (skip detailed now)...
 
         const canKong = this.checkKongOpportunity(data.tile, data.playerId);
         if (canKong) {
-            this.uiManager.showKongButton(data.tile, () => this.declareKong(data.tile.id));
+            // Query server for possible combinations so player can choose
+            this.socketManager.requestKongOptions(this.roomId, data.tile.id, (result) => {
+                if (!result || result.error) {
+                    console.warn('No kong options or error', result);
+                    // fallback: show simple kong button
+                    this.uiManager.showKongButton(data.tile, () => {
+                        this.declareKong(data.tile.id);
+                    });
+                    return;
+                }
+
+                const options = result.options || [];
+                if (options.length === 0) {
+                    this.uiManager.showKongButton(data.tile, () => this.declareKong(data.tile.id));
+                    return;
+                }
+
+                // Show a selection UI so player picks which tiles to use
+                this.uiManager.showKongOptionsModal(data.tile, options, (chosenUsedTileIds) => {
+                    // when player selects option, emit declareKong with chosen used tile ids
+                    this.declareKongWithUsedTiles(data.tile.id, chosenUsedTileIds);
+                });
+            });
         } else {
             this.uiManager.hideKongButton();
         }
     }
-    
-    // Called when server broadcasts a kong was declared
+
+    // helper that calls socketManager.declareKong with used tile ids
+    declareKongWithUsedTiles(tileId, usedTileIds) {
+        if (this.roomId && tileId) {
+            console.log('GameManager: Declaring kong for tile', tileId, 'with', usedTileIds);
+            this.socketManager.declareKong(this.roomId, tileId, usedTileIds);
+        }
+    }    
+
+    // Handler invoked when server broadcasts 'kongDeclared'
     onKongDeclared(data) {
-        console.log('🎮 onKongDeclared', data);
+        console.log('GameManager: onKongDeclared', data);
+        if (!data) return;
 
-        // data: { playerId, meld, currentPlayer, currentPlayerName, currentPlayerWind, fan, message }
-        // 1) Render meld in UI for the player who declared
-        if (data && data.playerId) {
-            this.uiManager.addMeld(data.playerId, data.meld);
-        }
+        // Add meld visually
+        this.uiManager.addMeld(data.playerId, data.meld);
 
-        // 2) If I'm the kong player, update my hand (server emits handUpdated separately)
+        // If I'm the one who declared, server will send handUpdated and later kongDraw
         if (data.playerId === this.playerId) {
-            // Wait for handUpdated or tileDrawn events from server to re-render hand.
-            // But if server also included hand in payload you can update now:
-            // this.setCurrentHand(data.hand || this.currentHand);
-            // this.uiManager.renderCurrentHand(this.currentHand);
-            this.uiManager.showMessage('gameMessage', data.message || 'You declared KONG', 'success');
+            this.uiManager.showMessage('gameMessage', 'You declared KONG! Awaiting replacement draw...', 'success');
         } else {
-            // Non-declaring clients: show message
-            this.uiManager.showMessage('gameMessage', data.message || `${data.currentPlayerName} declared KONG`, 'info');
+            const playerName = this.uiManager.getPlayerName(data.playerId);
+            this.uiManager.showMessage('gameMessage', `${playerName} declared KONG`, 'info');
         }
 
-        // 3) Update turn state according to payload
+        // Update turn state if provided
         if (data.currentPlayer) {
             this.turnManager.updateTurnState(data.currentPlayer);
         }
-
-        // Note: server will send tileDrawn to the kong player with the replacement tile.
-        // The kong player should get a 'tileDrawn' event and then we enable makeTilesDiscardable in onTileDrawn.
     }
 
+    // Handler for the special kong draw sent to the kong player
+    onKongDraw(data) {
+        console.log('GameManager: onKongDraw', data);
+        if (!data) return;
 
+        // Update hand if present
+        if (data.hand) {
+            this.setCurrentHand(data.hand);
+            this.uiManager.renderCurrentHand(this.currentHand);
+        } else if (data.tile) {
+            // add tile to our current hand view if server didn't send full hand
+            this.currentHand.push(data.tile);
+            this.uiManager.renderCurrentHand(this.currentHand);
+        }
 
+        // Show the special message "You kong! You drew X. Please discard one tile"
+        const tileName = data.tile ? data.tile.display : (data.message || 'a tile');
+        this.uiManager.showMessage('gameMessage', `You konged — you drew ${tileName}. Please discard one tile.`, 'success');
+
+        // Enable discarding so player can pick tile to discard and finish turn
+        this.uiManager.makeTilesDiscardable(this.currentHand, (tileId) => this.discardTile(tileId));
+    }
 
     // Updated pung check: consider wild (fei) tiles in our hand
     checkPungOpportunity(discardedTile, fromPlayerId) {

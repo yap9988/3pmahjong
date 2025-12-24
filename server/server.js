@@ -256,22 +256,48 @@ io.on('connection', (socket) => {
         socket.emit('handUpdated', { hand: result.hand });
     });
 
-    // Declare Kong (from discard)
-    socket.on('declareKong', (roomId, tileId) => {
+
+    // Get possible kong options (combinations) for the caller for the given discarded tile
+    socket.on('getKongOptions', (roomId, tileId, callback) => {
         const room = roomManager.getRoom(roomId);
         if (!room || !room.game) {
-            socket.emit('error', { error: 'Game not found' });
+            if (callback) callback({ error: 'Game not found' });
+            return;
+        }
+        try {
+            const result = room.game.getKongOptions(socket.id, tileId);
+            if (callback) callback(result);
+        } catch (err) {
+            console.error('getKongOptions error', err);
+            if (callback) callback({ error: 'Failed to compute kong options' });
+        }
+    });
+
+
+
+    // Declare Kong - accept optional usedTileIds from client (array)
+    socket.on('declareKong', (roomId, tileId, usedTileIds, cb) => {
+        // Allow older clients that send (roomId, tileId) only
+        if (Array.isArray(usedTileIds) === false && typeof usedTileIds === 'function') {
+            cb = usedTileIds;
+            usedTileIds = null;
+        }
+
+        const room = roomManager.getRoom(roomId);
+        if (!room || !room.game) {
+            if (cb) cb({ error: 'Game not found' });
             return;
         }
 
         try {
-            const result = room.game.declareKong(socket.id, tileId);
+            const result = room.game.declareKong(socket.id, tileId, usedTileIds);
             if (result.error) {
                 socket.emit('error', result);
+                if (cb) cb(result);
                 return;
             }
 
-            // Broadcast kong to everyone so they can render the meld and remove the discard tile
+            // Broadcast kongDeclared to everyone
             io.to(roomId).emit('kongDeclared', {
                 playerId: socket.id,
                 meld: result.meld,
@@ -282,29 +308,34 @@ io.on('connection', (socket) => {
                 message: result.message
             });
 
-            // Send updated hand to the kong player
+            // Send updated hand to kong player
             socket.emit('handUpdated', { hand: result.hand });
 
-            // After an exposed kong we must draw from the back of the dummy wall for that player.
-            // Call the game drawTile for that player (server enforces turn logic).
+            // Now draw for the kong player from the wall and send them the draw result
             try {
                 const drawResult = room.game.drawTile(socket.id);
-                // Send draw result only to the kong player (they need to discard)
-                socket.emit('tileDrawn', drawResult);
+                // give a kong-specific message
+                const kongDrawPayload = Object.assign({}, drawResult, {
+                    kongOrigin: true,
+                    message: `You konged and drew ${drawResult.tile ? drawResult.tile.display : 'a tile'}. Please discard one tile.`
+                });
+                socket.emit('kongDraw', kongDrawPayload);
 
-                // Broadcast updated game state to everyone so clients can fully sync (optional but safer)
+                // Broadcast full game state after changes
                 io.to(roomId).emit('gameStateUpdated', room.game.getGameState());
+
+                if (cb) cb({ success: true });
             } catch (drawErr) {
                 console.error('Error drawing after kong:', drawErr);
-                // Inform the player (if any)
                 socket.emit('error', { error: drawErr.message || 'Draw after kong failed' });
+                if (cb) cb({ error: 'Draw failed' });
             }
         } catch (err) {
-            console.error('Error handling declareKong:', err);
+            console.error('declareKong handler error:', err);
             socket.emit('error', { error: 'declareKong failed' });
+            if (cb) cb({ error: 'declareKong failed' });
         }
     });
-
 
 
 

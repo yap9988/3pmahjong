@@ -134,6 +134,23 @@ class SocketManager {
         });        
 
 
+        // Add event listener for kongDraw (special draw after kong)
+        this.socket.on('kongDraw', (data) => {
+            console.log('SocketManager: kongDraw', data);
+            // If it's for me, forward to game manager handler (shows message & enable discard)
+            try {
+                if (this.gameManager && typeof this.gameManager.onKongDraw === 'function') {
+                    this.gameManager.onKongDraw(data);
+                } else {
+                    // Fallback - call onTileDrawn so UI updates hand
+                    this.gameManager.onTileDrawn(data);
+                }
+            } catch (e) {
+                console.error('Error handling kongDraw', e);
+            }
+        });
+
+
         this.socket.on('handUpdated', (data) => {
             this.gameManager.setCurrentHand(data.hand);
             this.gameManager.uiManager.renderCurrentHand(data.hand);
@@ -185,14 +202,23 @@ class SocketManager {
         this.socket.emit('declarePung', { roomId, tileId });
     }
 
-    declareKong(roomId, tileId) {
+    // Request kong options (server computes possible tile-id combinations)
+    requestKongOptions(roomId, tileId, callback) {
+        if (!this.socket) return callback && callback({ error: 'Not connected' });
+        this.socket.emit('getKongOptions', roomId, tileId, (result) => {
+            if (callback) callback(result);
+        });
+    }
+
+    // Updated declareKong to optionally send usedTileIds
+    declareKong(roomId, tileId, usedTileIds = null) {
         if (!this.socket) return;
-        this.socket.emit('declareKong', roomId, tileId, (response) => {
-            // optional ack handling if server sends callback; your server currently responds via events
-            if (response && response.error) {
-                this.gameManager.uiManager.showMessage('gameMessage', response.error, 'error');
+        // If usedTileIds provided we send them; server supports both signatures
+        this.socket.emit('declareKong', roomId, tileId, usedTileIds, (ack) => {
+            if (ack && ack.error) {
+                this.gameManager.uiManager.showMessage('gameMessage', ack.error, 'error');
             } else {
-                console.log('declareKong ack:', response);
+                console.log('declareKong ack:', ack);
             }
         });
     }

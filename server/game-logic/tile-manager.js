@@ -16,7 +16,7 @@ class TileManager {
                     id: `D${i}-${j}`,
                     display: `${i}筒`,
                     chinese: `${i}筒`,
-                                        isHonor: false,
+                    isHonor: false,
                     isBonus: false,
                     isWild: false
                 });
@@ -39,7 +39,7 @@ class TileManager {
                     display: wind.display,
                     chinese: wind.chinese,
                     id: `W${wind.value}-${j}`,
-                                        isHonor: false,
+                    isHonor: true,
                     isBonus: false,
                     isWild: false
                 });
@@ -61,7 +61,7 @@ class TileManager {
                     display: dragon.display,
                     chinese: dragon.chinese,
                     id: `DR${dragon.value}-${j}`,
-                                        isHonor: false,
+                    isHonor: true,
                     isBonus: false,
                     isWild: false
                 });
@@ -69,46 +69,45 @@ class TileManager {
         });
         
 
-        const seasons = [
-            { value: 1, display: '春', chinese: '春' },
-            { value: 2, display: '夏', chinese: '夏' },
-            { value: 3, display: '秋', chinese: '秋' },
-            { value: 4, display: '冬', chinese: '冬' }
-        ];
-
-        seasons.forEach(season => {
-            tiles.push({
-                type: 'season',
-                value: season.value,
-                display: season.display,
-                chinese: season.chinese,
-                id: `S${season.value}`,
-                isHonor: false,
-                isBonus: true,
-                isWild: false,
-                bonusType: 'season'
-            });
-        });
-
-
+        // 4) Flowers — 4 distinct singletons (梅 蘭 菊 竹) (4)
         const flowers = [
             { value: 1, display: '梅', chinese: '梅' },
             { value: 2, display: '蘭', chinese: '蘭' },
             { value: 3, display: '菊', chinese: '菊' },
             { value: 4, display: '竹', chinese: '竹' }
         ];
-    
-        flowers.forEach(flower => {
+        flowers.forEach((flower, idx) => {
             tiles.push({
                 type: 'flower',
                 value: flower.value,
                 display: flower.display,
                 chinese: flower.chinese,
-                id: `F${flower.value}`,
+                id: `F${flower.value}`, // singletons
                 isHonor: false,
                 isBonus: true,
                 isWild: false,
                 bonusType: 'flower'
+            });
+        });
+
+        // 5) Seasons — 4 distinct singletons (春 夏 秋 冬) (4)
+        const seasons = [
+            { value: 1, display: '春', chinese: '春' },
+            { value: 2, display: '夏', chinese: '夏' },
+            { value: 3, display: '秋', chinese: '秋' },
+            { value: 4, display: '冬', chinese: '冬' }
+        ];
+        seasons.forEach(season => {
+            tiles.push({
+                type: 'season',
+                value: season.value,
+                display: season.display,
+                chinese: season.chinese,
+                id: `S${season.value}`, // singletons
+                isHonor: false,
+                isBonus: true,
+                isWild: false,
+                bonusType: 'season'
             });
         });
 

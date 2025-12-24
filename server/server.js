@@ -221,6 +221,11 @@ io.on('connection', (socket) => {
             });
         }
 
+        // Broadcast meld updates if changed (e.g. auto-swap of wild card)
+        if (result.meldsChanged) {
+            io.to(roomId).emit('gameStateUpdated', room.game.getGameState());
+        }
+
         socket.to(roomId).emit('playerDrewTile', {
             playerId: socket.id,
             dummyWallCount: result.dummyWallCount
@@ -339,6 +344,11 @@ io.on('connection', (socket) => {
                     playerId: socket.id,
                     bonusTiles: drawResult.bonusTiles
                 });
+            }
+            
+            // Broadcast meld updates if changed (e.g. auto-swap of wild card)
+            if (drawResult.meldsChanged) {
+                io.to(roomId).emit('gameStateUpdated', room.game.getGameState());
             }
             
             // Notify others that player drew

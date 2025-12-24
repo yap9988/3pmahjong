@@ -201,7 +201,6 @@ class TileRenderer {
         const container = document.createElement('div');
         container.style.display = 'flex';
         container.style.flexDirection = 'column'; // Stack vertically for side view
-        container.style.gap = '-40px'; // Overlap slightly for 3D effect
 
         const imgPath = side === 'left' ? '/assets/tile_left.png' : '/assets/tile_right.png';
         
@@ -213,6 +212,8 @@ class TileRenderer {
             img.style.width = `${sideWidth}vmin`;
             img.style.height = `${sideHeight}vmin`;
             img.style.marginBottom = `-${sideHeight * 0.6}vmin`; // Stack effect
+            img.style.background = '#1565C0'; // Fallback color
+            img.style.borderRadius = '4px';
             img.alt = 'tile back';
             container.appendChild(img);
         }

@@ -109,8 +109,7 @@ class SocketManager {
         });
         
         this.socket.on('playerDrewTile', (data) => {
-            this.gameManager.uiManager.updateDummyWallCount(data.dummyWallCount);
-            this.gameManager.uiManager.showMessage('gameMessage', 'Another player drew a tile...', 'info');
+            this.gameManager.onPlayerDrewTile(data);
         });
         
         this.socket.on('tileDiscarded', (data) => {
@@ -163,6 +162,10 @@ class SocketManager {
 
         this.socket.on('handUpdated', (data) => {
             this.gameManager.onHandUpdated(data);
+        });
+        
+        this.socket.on('gameStateUpdated', (data) => {
+            this.gameManager.onGameStateUpdated(data);
         });
         
         this.socket.on('error', (data) => {

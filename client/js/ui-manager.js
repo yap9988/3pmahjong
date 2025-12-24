@@ -493,12 +493,12 @@ class UIManager {
 
         // Update Left
         this.setElementText('name-left', `${leftPlayer.name} (${leftPlayer.seatWind})`);
-        this.renderSideHand('hand-left', leftPlayer.handCount || 13, 'left');
+        this.renderSideHand('hand-left', (leftPlayer.handCount !== undefined ? leftPlayer.handCount : 13), 'left');
         this.renderPlayerMeldsAndBonus(leftPlayer.id, 'left');
 
         // Update Right
         this.setElementText('name-right', `${rightPlayer.name} (${rightPlayer.seatWind})`);
-        this.renderSideHand('hand-right', rightPlayer.handCount || 13, 'right');
+        this.renderSideHand('hand-right', (rightPlayer.handCount !== undefined ? rightPlayer.handCount : 13), 'right');
         this.renderPlayerMeldsAndBonus(rightPlayer.id, 'right');
 
         // Update dummy wall count
@@ -788,75 +788,6 @@ class UIManager {
         if (discardPile && discardPile.lastElementChild) {
             discardPile.removeChild(discardPile.lastElementChild);
         }
-    }
-
-    // Render a modal of choices for kong combinations. options = [{ usedTileIds, label }]
-    showKongOptionsModal(discardedTile, options, onSelect) {
-        // remove existing modal
-        const existing = document.querySelector('.kong-options-modal');
-        if (existing) existing.remove();
-
-        const modal = document.createElement('div');
-        modal.className = 'kong-options-modal';
-        modal.style.position = 'fixed';
-        modal.style.top = '50%';
-        modal.style.left = '50%';
-        modal.style.transform = 'translate(-50%, -50%)';
-        modal.style.background = 'rgba(0,0,0,0.95)';
-        modal.style.padding = '18px';
-        modal.style.borderRadius = '12px';
-        modal.style.zIndex = '2000';
-        modal.style.minWidth = '320px';
-        modal.style.color = '#fff';
-
-        const title = document.createElement('h3');
-        title.textContent = `Kong options for ${discardedTile.display || discardedTile.value}`;
-        title.style.marginBottom = '12px';
-        modal.appendChild(title);
-
-        options.forEach(opt => {
-            const btn = document.createElement('button');
-            btn.textContent = opt.label + ` (use ${opt.usedTileIds.length} tile(s))`;
-            btn.style.display = 'block';
-            btn.style.width = '100%';
-            btn.style.margin = '6px 0';
-            btn.style.padding = '8px';
-            btn.style.borderRadius = '6px';
-            btn.style.cursor = 'pointer';
-            btn.onclick = () => {
-                onSelect(opt.usedTileIds);
-                modal.remove();
-            };
-            modal.appendChild(btn);
-        });
-
-        // fallback option: use all available (emit without usedTileIds)
-        const fallback = document.createElement('button');
-        fallback.textContent = 'Auto-select (server chooses)';
-        fallback.style.display = 'block';
-        fallback.style.width = '100%';
-        fallback.style.margin = '6px 0';
-        fallback.style.padding = '8px';
-        fallback.style.borderRadius = '6px';
-        fallback.style.cursor = 'pointer';
-        fallback.onclick = () => {
-            onSelect(null);
-            modal.remove();
-        };
-        modal.appendChild(fallback);
-
-        const cancel = document.createElement('button');
-        cancel.textContent = 'Cancel';
-        cancel.style.display = 'block';
-        cancel.style.width = '100%';
-        cancel.style.margin = '6px 0';
-        cancel.style.padding = '8px';
-        cancel.style.borderRadius = '6px';
-        cancel.style.cursor = 'pointer';
-        cancel.onclick = () => modal.remove();
-        modal.appendChild(cancel);
-
-        document.body.appendChild(modal);
     }
 
     showChiOptionsModal(tile, options, onSelect) {

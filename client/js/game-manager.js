@@ -219,6 +219,7 @@ class GameManager {
             
             // Check for initial 4-card Kong (An Gang)
             this.checkSelfKongOpportunity();
+            this.checkBuGangOpportunity();
         }
 
         // --- Render bonus tiles for all players (labelled by player) ---
@@ -268,6 +269,16 @@ class GameManager {
         // Update hand and UI
         this.lastDrawnTileId = data.tile ? data.tile.id : null;
         this.setCurrentHand(data.hand);
+        
+        // Update melds if provided (e.g. auto-swap)
+        if (data.melds) {
+            const p = this.players.find(pl => pl.id === this.playerId);
+            if (p) {
+                p.melds = data.melds;
+                this.uiManager.renderPlayerMeldsAndBonus(this.playerId);
+            }
+        }
+        
         this.uiManager.renderCurrentHand(this.currentHand);
 
         // Update dummy wall counter
@@ -297,6 +308,31 @@ class GameManager {
         
         // Check for Self Kong (An Gang) after drawing
         this.checkSelfKongOpportunity();
+        this.checkBuGangOpportunity();
+    }
+    
+    onPlayerDrewTile(data) {
+        this.uiManager.updateDummyWallCount(data.dummyWallCount);
+        this.uiManager.showMessage('gameMessage', 'Another player drew a tile...', 'info');
+        
+        // Update opponent hand count
+        const p = this.players.find(pl => pl.id === data.playerId);
+        if (p) {
+            p.handCount = (p.handCount || 0) + 1;
+            this.uiManager.updateGameDisplay({ dummyWallCount: data.dummyWallCount });
+        }
+    }
+
+    onGameStateUpdated(data) {
+        console.log('GameManager: Game state updated', data);
+        if (data.players) {
+            this.setPlayers(data.players);
+        }
+        if (data.dummyWallCount) {
+            this.uiManager.updateDummyWallCount(data.dummyWallCount);
+        }
+        // Refresh UI
+        this.uiManager.updateGameDisplay(data);
     }
     
     // When a discard occurs, we already call checkKongOpportunity; if true request options
@@ -305,7 +341,20 @@ class GameManager {
         this.uiManager.addToDiscardPile(data.tile);
         this.turnManager.updateTurnState(data.currentPlayer);
 
-        if (data.playerId === this.playerId) return;
+        // Update hand count for discarder
+        const p = this.players.find(pl => pl.id === data.playerId);
+        if (p) {
+            p.handCount = (p.handCount || 0) - 1;
+            // Force UI update for side hands
+            this.uiManager.updateGameDisplay({ dummyWallCount: parseInt(document.getElementById('dummyWallCount').textContent) || 0 });
+        }
+
+        if (data.playerId === this.playerId) {
+            this.uiManager.hidePungButton();
+            this.uiManager.hideChiButton();
+            this.uiManager.hideKongButton();
+            return;
+        }
 
         // Check Pung Opportunity
         if (this.checkPungOpportunity(data.tile, data.playerId)) {
@@ -329,28 +378,9 @@ class GameManager {
 
         const canKong = this.checkKongOpportunity(data.tile, data.playerId);
         if (canKong) {
-            // Query server for possible combinations so player can choose
-            this.socketManager.requestKongOptions(this.roomId, data.tile.id, (result) => {
-                if (!result || result.error) {
-                    console.warn('No kong options or error', result);
-                    // fallback: show simple kong button
-                    this.uiManager.showKongButton(data.tile, () => {
-                        this.declareKong(data.tile.id);
-                    });
-                    return;
-                }
-
-                const options = result.options || [];
-                if (options.length === 0) {
-                    this.uiManager.showKongButton(data.tile, () => this.declareKong(data.tile.id));
-                    return;
-                }
-
-                // Show a selection UI so player picks which tiles to use
-                this.uiManager.showKongOptionsModal(data.tile, options, (chosenUsedTileIds) => {
-                    // when player selects option, emit declareKong with chosen used tile ids
-                    this.declareKongWithUsedTiles(data.tile.id, chosenUsedTileIds);
-                });
+            // Direct Kong (Strict rules = only one way to kong)
+            this.uiManager.showKongButton(data.tile, () => {
+                this.declareKong(data.tile.id);
             });
         } else {
             this.uiManager.hideKongButton();
@@ -374,6 +404,11 @@ class GameManager {
         if (p) {
             if (!p.melds) p.melds = [];
             p.melds.push(data.meld);
+            // Pung uses 2 tiles from hand (plus 1 discard)
+            p.handCount = (p.handCount || 0) - 2;
+            
+            // Refresh side hands
+            this.uiManager.updateGameDisplay({ dummyWallCount: parseInt(document.getElementById('dummyWallCount').textContent) || 0 });
         }
         this.uiManager.renderPlayerMeldsAndBonus(data.playerId);
         
@@ -409,6 +444,11 @@ class GameManager {
         if (p) {
             if (!p.melds) p.melds = [];
             p.melds.push(data.meld);
+            // Chi uses 2 tiles from hand (plus 1 discard)
+            p.handCount = (p.handCount || 0) - 2;
+            
+            // Refresh side hands
+            this.uiManager.updateGameDisplay({ dummyWallCount: parseInt(document.getElementById('dummyWallCount').textContent) || 0 });
         }
         this.uiManager.renderPlayerMeldsAndBonus(data.playerId);
         
@@ -442,6 +482,13 @@ class GameManager {
         if (p) {
             if (!p.melds) p.melds = [];
             p.melds.push(data.meld);
+            
+            // Update hand count: Ming Kong (-3), An Kong (-4)
+            const deduction = (data.meld && data.meld.isConcealed) ? 4 : 3;
+            p.handCount = (p.handCount || 0) - deduction;
+            
+            // Refresh side hands
+            this.uiManager.updateGameDisplay({ dummyWallCount: parseInt(document.getElementById('dummyWallCount').textContent) || 0 });
         }
         this.uiManager.renderPlayerMeldsAndBonus(data.playerId);
 
@@ -470,6 +517,13 @@ class GameManager {
         // Update bonus tiles for the player who declared
         if (data.bonusTiles) {
             this.bonusTiles[data.playerId] = data.bonusTiles;
+            
+            // Dan Fei moves 1 tile from hand to bonus
+            const p = this.players.find(pl => pl.id === data.playerId);
+            if (p) {
+                p.handCount = (p.handCount || 0) - 1;
+                this.uiManager.updateGameDisplay({ dummyWallCount: parseInt(document.getElementById('dummyWallCount').textContent) || 0 });
+            }
             this.uiManager.renderPlayerMeldsAndBonus(data.playerId);
         }
         this.uiManager.showMessage('gameMessage', data.message, 'info');
@@ -483,6 +537,16 @@ class GameManager {
         // Update hand if present
         if (data.hand) {
             this.setCurrentHand(data.hand);
+            
+            // Update melds if provided (e.g. auto-swap)
+            if (data.melds) {
+                const p = this.players.find(pl => pl.id === this.playerId);
+                if (p) {
+                    p.melds = data.melds;
+                    this.uiManager.renderPlayerMeldsAndBonus(this.playerId);
+                }
+            }
+            
             this.uiManager.renderCurrentHand(this.currentHand);
             // Note: Kong draw usually doesn't need separation like normal draw, or we can set lastDrawnTileId if desired.
         } else if (data.tile) {
@@ -610,6 +674,27 @@ class GameManager {
                 });
             }
         }
+    }
+
+    // Check for Bu Gang (Add-on Kong): Adding a tile from hand to an existing Pung
+    checkBuGangOpportunity() {
+        if (!this.turnManager.isMyTurn) return;
+
+        const me = this.players.find(p => p.id === this.playerId);
+        if (!me || !me.melds) return;
+
+        // Look for tiles in hand that match an exposed Pung
+        this.currentHand.forEach(tile => {
+            if (tile.isWild) return;
+            
+            const matchingPung = me.melds.find(m => m.type === 'pung' && m.tiles[0].type === tile.type && m.tiles[0].value === tile.value);
+            
+            if (matchingPung) {
+                this.uiManager.showKongButton(tile, () => {
+                    this.declareKong(tile.id);
+                });
+            }
+        });
     }
 
 

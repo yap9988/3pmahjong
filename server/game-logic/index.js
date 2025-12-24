@@ -201,6 +201,7 @@ class MalaysiaMahjong3P {
             
             // --- Auto-Swap Logic: Check if drawn tile can replace a declared Wild Card in a meld ---
             let swapMessage = '';
+            let meldsChanged = false;
             if (player.melds && player.melds.length > 0) {
                 for (const meld of player.melds) {
                     if (meld.usesWildCards) {
@@ -231,6 +232,7 @@ class MalaysiaMahjong3P {
                                 this.wildCardDeclarations.delete(declKey);
                                 
                                 swapMessage = ` (Swapped for Wild Card)`;
+                                meldsChanged = true;
                                 break; // Only perform one swap per draw
                             }
                         }
@@ -250,7 +252,9 @@ class MalaysiaMahjong3P {
                 bonusTiles: player.bonusTiles || [],
                 drawnBonusTiles: poppedBonuses,
                 dummyWallCount: this.wallManager.getDummyWallCount(),
-                message: `Drew ${tile.display}${swapMessage}`
+                message: `Drew ${tile.display}${swapMessage}`,
+                melds: player.melds,
+                meldsChanged: meldsChanged
             };
             
         } catch (error) {
@@ -545,6 +549,44 @@ class MalaysiaMahjong3P {
             // 1. Find the tile in hand to identify type/value
             const targetTile = player.hand.find(t => t.id === tileId);
             if (!targetTile) return { error: 'Tile not in hand for self-kong' };
+
+            // --- BU GANG (Add-on Kong) Check ---
+            // Check if player has a Pung of this tile
+            const pungMeldIndex = player.melds.findIndex(m => 
+                m.type === 'pung' && 
+                m.tiles[0].type === targetTile.type && 
+                m.tiles[0].value === targetTile.value
+            );
+
+            if (pungMeldIndex !== -1) {
+                // Execute Bu Gang
+                const pungMeld = player.melds[pungMeldIndex];
+                
+                // Remove tile from hand
+                const idx = player.hand.findIndex(t => t.id === tileId);
+                if (idx !== -1) player.hand.splice(idx, 1);
+
+                // Add to meld
+                pungMeld.tiles.push(targetTile);
+                pungMeld.type = 'kong';
+                // Bu Gang is exposed (since Pung was exposed)
+                
+                const fan = 2; // Kong base fan
+                const bonusFan = this.fanCalculator.calculateBonusFan(player);
+                const totalFan = fan + bonusFan;
+
+                return {
+                    success: true,
+                    meld: pungMeld,
+                    hand: player.hand,
+                    currentPlayer: playerId,
+                    currentPlayerName: player.name,
+                    currentPlayerWind: player.seatWind,
+                    fan: totalFan,
+                    bonusFan: bonusFan,
+                    message: `${player.name} declared Bu Gang (Add-on Kong)!`
+                };
+            }
 
             // 2. Check for 4 matching tiles (Strict: No Wilds)
             const matchingTiles = player.hand.filter(t => 

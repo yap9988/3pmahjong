@@ -67,8 +67,9 @@ class TurnManager {
             name: p.name,
             seatWind: p.seatWind,
             handCount: p.hand.length,
-            meldsCount: p.melds.length,
-            score: p.score
+            melds: p.melds, // Send full melds array so client can render them
+            score: p.score,
+            isHost: p.isHost
         }));
     }
 }

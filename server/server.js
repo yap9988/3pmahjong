@@ -399,8 +399,28 @@ io.on('connection', (socket) => {
         }
         
         if (result.win) {
-            room.status = 'ended';
+            // Reset room status to waiting so we can start a new game
+            room.status = 'waiting';
+            
+            // Rotate players so winner becomes East (index 0) for the next game
+            const winnerIndex = room.players.findIndex(p => p.id === socket.id);
+            if (winnerIndex !== -1 && winnerIndex !== 0) {
+                const newOrder = [
+                    ...room.players.slice(winnerIndex),
+                    ...room.players.slice(0, winnerIndex)
+                ];
+                room.players = newOrder;
+            }
+            
             io.to(roomId).emit('gameWon', result);
+            
+            // Broadcast updated player list (new East)
+            io.to(roomId).emit('playerListUpdated', {
+                players: room.players,
+                playerCount: room.players.length,
+                roomId: roomId
+            });
+            
             console.log(`🎉 Game won in ${roomId}: ${result.message}`);
         }
     });

@@ -100,6 +100,10 @@ class SocketManager {
             this.gameManager.onGameStarted(data);
         });
         
+        this.socket.on('gameWon', (data) => {
+            this.gameManager.onGameWon(data);
+        });
+        
         this.socket.on('tileDrawn', (data) => {
             this.gameManager.onTileDrawn(data);
         });

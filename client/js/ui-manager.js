@@ -218,6 +218,21 @@ class UIManager {
         }
     }
     
+    resetGameUI() {
+        // Clear discard pile
+        const discardPile = document.getElementById('discardPile');
+        if (discardPile) discardPile.innerHTML = '';
+        
+        // Clear any open modals
+        const modals = document.querySelectorAll('.kong-options-modal, .chi-options-modal, .wild-card-declaration');
+        modals.forEach(el => el.remove());
+        
+        // Hide action buttons
+        this.hidePungButton();
+        this.hideChiButton();
+        this.hideKongButton();
+    }
+    
     updateRoomList(rooms) {
         const list = document.getElementById('roomList');
         if (!list) return;

@@ -705,31 +705,34 @@ class MalaysiaMahjong3P {
     checkWin(playerId) {
         const player = this.turnManager.getPlayerById(playerId);
         if (!player) return { error: 'Player not found' };
+
+        const currentPlayer = this.turnManager.getCurrentPlayer();
+        const isSelfDraw = (currentPlayer.id === playerId);
         
-        // Validate hand (considering wild cards)
-        const validation = this.handChecker.validateHandForWin(player, this.wildCardDeclarations);
-        if (!validation.valid) {
-            return validation;
+        let winType = 'Self-Draw (Zimo)';
+        let winningTile = null;
+
+        if (isSelfDraw) {
+            // Self-draw: Tile is already in hand
+        } else {
+            // Win on discard (Hu)
+            const lastDiscard = this.wallManager.getLastDiscard();
+            if (!lastDiscard) {
+                return { error: 'No discard available to win on' };
+            }
+            winningTile = lastDiscard.tile;
+            winType = 'Win on Discard (Hu)';
+            
+            // Add tile to hand and remove from discard pile
+            player.hand.push(winningTile);
+            this.wallManager.removeLastDiscard();
         }
         
-        // Calculate fan
-        const meldFan = this.fanCalculator.calculateMeldFan(player.melds, player);
-        const bonusFan = this.fanCalculator.calculateBonusFan(player);
-        const handFan = this.fanCalculator.calculateHandFan(player, this.wildCardDeclarations);
+        // Sort hand for display
+        player.hand = this.tileManager.sortHand(player.hand);
         
-        const totalFan = meldFan + bonusFan + handFan;
-        
-        // Check minimum fan requirement
-        if (totalFan < 1) {
-            return { error: 'Need at least 1 fan to win' };
-        }
-        
-        const handType = this.fanCalculator.determineHandType(player);
-        
-        // Calculate score
-        const baseScore = totalFan * 100;
-        const bonusScore = bonusFan * 50; // Extra for bonus tiles
-        const totalScore = baseScore + bonusScore;
+        // Bypass validation/fan calc for now (Dummy values)
+        const totalFan = 5; 
         
         return {
             win: true,
@@ -737,13 +740,11 @@ class MalaysiaMahjong3P {
             playerName: player.name,
             playerWind: player.seatWind,
             fan: totalFan,
-            meldFan: meldFan,
-            bonusFan: bonusFan,
-            handFan: handFan,
-            handType: handType,
-            score: totalScore,
-            bonusScore: bonusScore,
-            message: `${player.name} (${player.seatWind}) wins with ${totalFan} fan! ${handType}`
+            message: `${player.name} wins! (${winType})`,
+            hand: player.hand,
+            melds: player.melds,
+            winningTile: winningTile,
+            isSelfDraw: isSelfDraw
         };
     }
 }

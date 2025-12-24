@@ -187,6 +187,10 @@ class GameManager {
         console.log('🎮 onGameStarted called with data:', data);
 
         this.gameActive = true;
+        this.lastDrawnTileId = null; // Reset drawn tile separation
+
+        // Reset UI elements (discard pile, buttons, etc.)
+        this.uiManager.resetGameUI();
 
         this.setCurrentHand(data.hands[this.playerId] || []);
         this.setPlayers(data.players || []);
@@ -234,6 +238,18 @@ class GameManager {
             if (gameEl) gameEl.style.display = 'block';
         }, 100);
     }    
+
+    onGameWon(data) {
+        console.log('Game Won:', data);
+        this.gameActive = false;
+        
+        // Show simple alert for now to expose the win, then return to lobby
+        alert(`${data.message}\n\nClick OK to return to the room lobby and start the next game.`);
+        
+        // Return to room screen
+        this.uiManager.showScreen('room');
+        this.uiManager.showMessage('roomMessage', `Last game won by ${data.playerName}. Winner is now East!`, 'success');
+    }
 
     onTileDrawn(data) {
         if (data.error) {

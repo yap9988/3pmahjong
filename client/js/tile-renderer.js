@@ -240,6 +240,24 @@ class TileRenderer {
         wildCardDisplay.style.display = 'block';
         container.appendChild(wildCardDisplay);
 
+        // --- Dan Fei Button (New) ---
+        const danFeiBtn = document.createElement('button');
+        danFeiBtn.textContent = 'Dan Fei (Play as Bonus)';
+        danFeiBtn.style.display = 'block';
+        danFeiBtn.style.width = '100%';
+        danFeiBtn.style.padding = '12px';
+        danFeiBtn.style.background = '#FF9800'; // Orange
+        danFeiBtn.style.color = 'white';
+        danFeiBtn.style.border = 'none';
+        danFeiBtn.style.borderRadius = '6px';
+        danFeiBtn.style.cursor = 'pointer';
+        danFeiBtn.style.marginBottom = '20px';
+        danFeiBtn.style.fontWeight = 'bold';
+        danFeiBtn.style.fontSize = '1.1em';
+        danFeiBtn.onclick = () => onDeclare('danfei', null);
+        container.appendChild(danFeiBtn);
+        // ---------------------------
+
         const title = document.createElement('h3');
         title.textContent = 'Declare Wild Card As:';
         title.style.color = '#fff';

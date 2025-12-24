@@ -384,20 +384,20 @@ class UIManager {
             const ourIndex = players.findIndex(p => p.id === this.gameManager.playerId);
             
             if (ourIndex === 0) {
-                this.setElementText('playerNameDisplay', `${this.gameManager.playerName} (East)`);
-                this.setElementText('opponent1Name', `${players[1].name} (South)`);
-                this.setElementText('opponent2Name', `${players[2].name} (West)`);
-                this.setElementText('seatWindDisplay', 'East');
+                this.setElementText('playerNameDisplay', `${this.gameManager.playerName} (East東)`);
+                this.setElementText('opponent1Name', `${players[1].name} (South南)`);
+                this.setElementText('opponent2Name', `${players[2].name} (West西)`);
+                this.setElementText('seatWindDisplay', 'East東');
             } else if (ourIndex === 1) {
-                this.setElementText('playerNameDisplay', `${this.gameManager.playerName} (South)`);
-                this.setElementText('opponent1Name', `${players[0].name} (East)`);
-                this.setElementText('opponent2Name', `${players[2].name} (West)`);
-                this.setElementText('seatWindDisplay', 'South');
+                this.setElementText('playerNameDisplay', `${this.gameManager.playerName} (South南)`);
+                this.setElementText('opponent1Name', `${players[0].name} (East東)`);
+                this.setElementText('opponent2Name', `${players[2].name} (West西)`);
+                this.setElementText('seatWindDisplay', 'South南');
             } else {
-                this.setElementText('playerNameDisplay', `${this.gameManager.playerName} (West)`);
-                this.setElementText('opponent1Name', `${players[0].name} (East)`);
-                this.setElementText('opponent2Name', `${players[1].name} (South)`);
-                this.setElementText('seatWindDisplay', 'West');
+                this.setElementText('playerNameDisplay', `${this.gameManager.playerName} (West西)`);
+                this.setElementText('opponent1Name', `${players[0].name} (East東)`);
+                this.setElementText('opponent2Name', `${players[1].name} (South南)`);
+                this.setElementText('seatWindDisplay', 'West西');
             }
         }
 
@@ -651,10 +651,15 @@ class UIManager {
         
         // Show declaration interface
         this.showWildCardDeclaration(wildCard, (wildCardId, tileType, tileValue) => {
-            console.log('Declaring wild card as:', tileType, tileValue);
-            
-            // Send declaration to server
-            this.gameManager.declareWildCard(wildCardId, tileType, tileValue);
+            if (tileType === 'danfei') {
+                console.log('Declaring Dan Fei for:', wildCardId);
+                this.gameManager.declareDanFei(wildCardId);
+            } else {
+                console.log('Declaring wild card as:', tileType, tileValue);
+                if (this.gameManager.declareWildCard) {
+                    this.gameManager.declareWildCard(wildCardId, tileType, tileValue);
+                }
+            }
         });
     }
 

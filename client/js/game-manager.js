@@ -134,6 +134,13 @@ class GameManager {
         }
     }
 
+    declareDanFei(tileId) {
+        if (this.roomId && tileId) {
+            console.log('GameManager: Declaring Dan Fei for tile', tileId);
+            this.socketManager.declareDanFei(this.roomId, tileId);
+        }
+    }
+
     // Client action to declare kong — calls socketManager
     declareKong(tileId) {
         if (this.roomId && tileId) {
@@ -455,6 +462,16 @@ class GameManager {
         if (data.currentPlayer) {
             this.turnManager.updateTurnState(data.currentPlayer);
         }
+    }
+
+    onDanFeiDeclared(data) {
+        console.log('GameManager: onDanFeiDeclared', data);
+        // Update bonus tiles for the player who declared
+        if (data.bonusTiles) {
+            this.bonusTiles[data.playerId] = data.bonusTiles;
+            this.uiManager.renderPlayerMeldsAndBonus(data.playerId);
+        }
+        this.uiManager.showMessage('gameMessage', data.message, 'info');
     }
 
     // Handler for the special kongDraw event (server sends this after a kong)

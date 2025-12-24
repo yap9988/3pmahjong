@@ -693,6 +693,40 @@ class MalaysiaMahjong3P {
         };
     }
 
+    declareDanFei(playerId, tileId) {
+        console.log('Game: Player', playerId, 'declaring Dan Fei for tile', tileId);
+        
+        if (!this.turnManager.isValidTurn(playerId)) {
+            return { error: 'Not your turn' };
+        }
+
+        const player = this.turnManager.getPlayerById(playerId);
+        if (!player) return { error: 'Player not found' };
+
+        const tileIndex = player.hand.findIndex(t => t.id === tileId);
+        if (tileIndex === -1) return { error: 'Tile not found in hand' };
+
+        const tile = player.hand[tileIndex];
+        if (!tile.isWild) return { error: 'Tile is not a wild card' };
+
+        // Remove from hand
+        player.hand.splice(tileIndex, 1);
+
+        // Add to bonus tiles
+        if (!player.bonusTiles) player.bonusTiles = [];
+        player.bonusTiles.push(tile);
+
+        // Sort hand
+        player.hand = this.tileManager.sortHand(player.hand);
+
+        return {
+            success: true,
+            hand: player.hand,
+            bonusTiles: player.bonusTiles,
+            tile: tile,
+            message: `${player.name} declared Dan Fei (Bonus)`
+        };
+    }
 
 
 

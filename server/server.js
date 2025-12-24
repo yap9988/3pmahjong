@@ -296,6 +296,61 @@ io.on('connection', (socket) => {
         socket.emit('handUpdated', { hand: result.hand });
     });
 
+    // Declare Dan Fei
+    socket.on('declareDanFei', (data) => {
+        const { roomId, tileId } = data;
+        const room = roomManager.getRoom(roomId);
+        if (!room || !room.game) return;
+
+        const result = room.game.declareDanFei(socket.id, tileId);
+        if (result.error) {
+            socket.emit('error', result);
+            return;
+        }
+
+        // 1. Broadcast bonus tiles update
+        io.to(roomId).emit('bonusTilesUpdated', {
+            playerId: socket.id,
+            bonusTiles: result.bonusTiles
+        });
+
+        // 2. Update player's hand
+        socket.emit('handUpdated', { hand: result.hand });
+
+        // 3. Notify room
+        io.to(roomId).emit('danFeiDeclared', {
+            playerId: socket.id,
+            playerName: room.game.turnManager.getPlayerById(socket.id).name,
+            tile: result.tile,
+            bonusTiles: result.bonusTiles,
+            message: result.message
+        });
+
+        // 4. Draw replacement tile from back
+        try {
+            const drawResult = room.game.drawTile(socket.id, true); // true = fromBack
+            
+            // Send draw result to player
+            socket.emit('tileDrawn', drawResult);
+
+            // Broadcast bonus tiles if draw triggered more bonuses
+            if (drawResult.drawnBonusTiles && drawResult.drawnBonusTiles.length > 0) {
+                io.to(roomId).emit('bonusTilesUpdated', {
+                    playerId: socket.id,
+                    bonusTiles: drawResult.bonusTiles
+                });
+            }
+            
+            // Notify others that player drew
+            socket.to(roomId).emit('playerDrewTile', {
+                playerId: socket.id,
+                dummyWallCount: drawResult.dummyWallCount
+            });
+        } catch (err) {
+            socket.emit('error', { message: 'Failed to draw replacement for Dan Fei' });
+        }
+    });
+
     // Get possible kong options (combinations) for the caller for the given discarded tile
     socket.on('getKongOptions', (roomId, tileId, callback) => {
         const room = roomManager.getRoom(roomId);

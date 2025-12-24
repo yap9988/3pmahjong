@@ -139,6 +139,10 @@ class SocketManager {
             }
         });        
 
+        this.socket.on('danFeiDeclared', (data) => {
+            this.gameManager.onDanFeiDeclared(data);
+        });
+
 
         // Add event listener for kongDraw (special draw after kong)
         this.socket.on('kongDraw', (data) => {
@@ -209,6 +213,10 @@ class SocketManager {
 
     declareChi(roomId, tileId, usedTileIds) {
         this.socket.emit('declareChi', { roomId, tileId, usedTileIds });
+    }
+
+    declareDanFei(roomId, tileId) {
+        this.socket.emit('declareDanFei', { roomId, tileId });
     }
 
     // Request kong options (server computes possible tile-id combinations)

@@ -26,9 +26,15 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../client/index.html'));
 });
 
+// Helper to broadcast room list to all clients
+const broadcastRoomList = () => {
+    io.emit('roomListUpdated', roomManager.getPublicRooms());
+};
+
 // Handle Socket.io connections
 io.on('connection', (socket) => {
     console.log('👤 Client connected:', socket.id);
+    socket.emit('roomListUpdated', roomManager.getPublicRooms());
 
     // Create room
     socket.on('createRoom', (data) => {
@@ -51,6 +57,7 @@ io.on('connection', (socket) => {
             isHost: true
         });
         
+        broadcastRoomList();
         console.log(`✅ Room ${roomId} created by ${player.name}`);
     });
 
@@ -102,6 +109,7 @@ io.on('connection', (socket) => {
         //    players: updatedRoom.players
         //});
         
+        broadcastRoomList();
         console.log(`✅ ${player.name} joined ${roomId}. Players: ${updatedRoom.players.length}/3`);
     });
 
@@ -151,6 +159,7 @@ io.on('connection', (socket) => {
             }))
         });
         
+        broadcastRoomList(); // Room is now playing, remove from lobby list
         console.log(`✅ Game started in ${roomId}`);
     });
 
@@ -470,6 +479,7 @@ io.on('connection', (socket) => {
                     roomId: roomIdToUpdate
                 });
             }
+            broadcastRoomList();
         }
     });
 

@@ -177,6 +177,10 @@ class GameManager {
         this.uiManager.showScreen('room');
         this.uiManager.showMessage('roomMessage', `Joined room ${data.roomId}`, 'success');
     }
+
+    onRoomListUpdated(rooms) {
+        this.uiManager.updateRoomList(rooms);
+    }
     
     // inside GameManager class
     onGameStarted(data) {

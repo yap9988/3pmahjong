@@ -34,6 +34,10 @@ class SocketManager {
         this.socket.on('roomCreated', (data) => {
             this.gameManager.onRoomCreated(data);
         });
+
+        this.socket.on('roomListUpdated', (rooms) => {
+            this.gameManager.onRoomListUpdated(rooms);
+        });
         
         this.socket.on('joinedRoom', (data) => {
             this.gameManager.onJoinedRoom(data);

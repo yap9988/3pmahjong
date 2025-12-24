@@ -22,6 +22,19 @@ class RoomManager {
         return this.rooms.get(roomId);
     }
     
+    getPublicRooms() {
+        const rooms = [];
+        for (const [id, room] of this.rooms) {
+            if (room.status === 'waiting') {
+                rooms.push({
+                    id: room.id,
+                    hostName: room.players.find(p => p.isHost)?.name || 'Unknown',
+                    playerCount: room.players.length
+                });
+            }
+        }
+        return rooms;
+    }
     
   // Add this method to your RoomManager class:
   broadcastPlayerList(roomId, io) {

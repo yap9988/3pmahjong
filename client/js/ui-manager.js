@@ -41,6 +41,13 @@ class UIManager {
                             </button>
                         </div>
                     </div>
+
+                    <div class="section">
+                        <h2><i class="fas fa-list"></i> Available Rooms</h2>
+                        <div id="roomList" style="max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 5px; padding: 10px;">
+                            <p style="color: #aaa; text-align: center;">Connecting to server...</p>
+                        </div>
+                    </div>
                     
                     <div id="lobbyMessage" class="message message-info">
                         Enter your name and click Create Room or Join Room
@@ -209,6 +216,44 @@ class UIManager {
         if (element) {
             element.classList.remove('hidden');
         }
+    }
+    
+    updateRoomList(rooms) {
+        const list = document.getElementById('roomList');
+        if (!list) return;
+        
+        if (!rooms || rooms.length === 0) {
+            list.innerHTML = '<p style="color: #aaa; text-align: center;">No rooms available. Create one!</p>';
+            return;
+        }
+        
+        list.innerHTML = '';
+        rooms.forEach(room => {
+            const item = document.createElement('div');
+            item.style.background = 'rgba(255,255,255,0.05)';
+            item.style.padding = '10px';
+            item.style.marginBottom = '8px';
+            item.style.borderRadius = '5px';
+            item.style.display = 'flex';
+            item.style.justifyContent = 'space-between';
+            item.style.alignItems = 'center';
+            
+            item.innerHTML = `
+                <div>
+                    <div style="font-weight: bold; color: #00adb5;">${room.id}</div>
+                    <div style="font-size: 0.85em; color: #ccc;">Host: ${room.hostName} | Players: ${room.playerCount}/3</div>
+                </div>
+                <button class="btn btn-sm btn-primary join-room-btn">Join</button>
+            `;
+            
+            const btn = item.querySelector('.join-room-btn');
+            btn.onclick = () => {
+                this.setInputValue('roomCode', room.id);
+                this.gameManager.joinRoom();
+            };
+            
+            list.appendChild(item);
+        });
     }
     
     // Input management

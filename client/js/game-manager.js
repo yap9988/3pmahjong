@@ -260,6 +260,39 @@ class GameManager {
         }
     }
     
+    // Called when server broadcasts a kong was declared
+    onKongDeclared(data) {
+        console.log('🎮 onKongDeclared', data);
+
+        // data: { playerId, meld, currentPlayer, currentPlayerName, currentPlayerWind, fan, message }
+        // 1) Render meld in UI for the player who declared
+        if (data && data.playerId) {
+            this.uiManager.addMeld(data.playerId, data.meld);
+        }
+
+        // 2) If I'm the kong player, update my hand (server emits handUpdated separately)
+        if (data.playerId === this.playerId) {
+            // Wait for handUpdated or tileDrawn events from server to re-render hand.
+            // But if server also included hand in payload you can update now:
+            // this.setCurrentHand(data.hand || this.currentHand);
+            // this.uiManager.renderCurrentHand(this.currentHand);
+            this.uiManager.showMessage('gameMessage', data.message || 'You declared KONG', 'success');
+        } else {
+            // Non-declaring clients: show message
+            this.uiManager.showMessage('gameMessage', data.message || `${data.currentPlayerName} declared KONG`, 'info');
+        }
+
+        // 3) Update turn state according to payload
+        if (data.currentPlayer) {
+            this.turnManager.updateTurnState(data.currentPlayer);
+        }
+
+        // Note: server will send tileDrawn to the kong player with the replacement tile.
+        // The kong player should get a 'tileDrawn' event and then we enable makeTilesDiscardable in onTileDrawn.
+    }
+
+
+
 
     // Updated pung check: consider wild (fei) tiles in our hand
     checkPungOpportunity(discardedTile, fromPlayerId) {

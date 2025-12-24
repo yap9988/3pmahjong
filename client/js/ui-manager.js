@@ -562,7 +562,74 @@ class UIManager {
         playerDiv.appendChild(nameSpan);
         playerDiv.appendChild(bonusDisplay);
     }
-    
+
+    // Ensure a melds area exists; create per-player meld container if needed and append the meld
+    addMeld(playerId, meld) {
+        // Create parent container if missing
+        let parent = document.getElementById('meldsArea');
+        if (!parent) {
+            const gameScreen = document.getElementById('game');
+            if (gameScreen) {
+                parent = document.createElement('div');
+                parent.id = 'meldsArea';
+                parent.style.margin = '10px 0';
+                parent.style.padding = '10px';
+                parent.style.background = 'rgba(255,255,255,0.02)';
+                parent.style.borderRadius = '8px';
+                parent.innerHTML = '<h4>Melds</h4>';
+                // Insert before the game action buttons area or append near other sections
+                gameScreen.insertBefore(parent, gameScreen.querySelector('.section:last-child'));
+            }
+        }
+
+        if (!parent) return;
+
+        // Create or get player's meld container
+        let playerDiv = document.getElementById(`melds-${playerId}`);
+        if (!playerDiv) {
+            playerDiv = document.createElement('div');
+            playerDiv.id = `melds-${playerId}`;
+            playerDiv.style.marginTop = '8px';
+            playerDiv.style.padding = '6px';
+            playerDiv.style.display = 'flex';
+            playerDiv.style.alignItems = 'center';
+            playerDiv.style.gap = '8px';
+            parent.appendChild(playerDiv);
+        }
+
+        // Add a label for owner
+        const ownerName = this.gameManager.players.find(p => p.id === playerId)?.name || (playerId === this.gameManager.playerId ? 'You' : `Player ${playerId?.slice(0,4)}`);
+        const label = document.createElement('div');
+        label.textContent = `${ownerName} meld:`;
+        label.style.minWidth = '120px';
+        label.style.fontWeight = '600';
+        label.style.color = '#fff';
+
+        // Meld tiles container
+        const meldContainer = document.createElement('div');
+        meldContainer.style.display = 'flex';
+        meldContainer.style.gap = '6px';
+
+        // Render each tile in the meld as a small tile element
+        (meld.tiles || []).forEach(tile => {
+            const tileEl = this.tileRenderer.createTileElement(tile);
+            tileEl.style.width = '36px';
+            tileEl.style.height = '48px';
+            tileEl.style.fontSize = '12px';
+            meldContainer.appendChild(tileEl);
+        });
+
+        // A simple entry for this meld — append to playerDiv
+        const entry = document.createElement('div');
+        entry.style.display = 'flex';
+        entry.style.alignItems = 'center';
+        entry.style.gap = '8px';
+        entry.appendChild(label);
+        entry.appendChild(meldContainer);
+
+        playerDiv.appendChild(entry);
+    }    
+
     updateDummyWallCount(count) {
         this.setElementText('dummyWallCount', count);
     }
@@ -712,6 +779,19 @@ class UIManager {
         const player = this.gameManager.players.find(p => p.id === playerId);
         return player ? player.name : `Player ${playerId?.substring(0, 4)}`;
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
 }
 
 export default UIManager;

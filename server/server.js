@@ -256,6 +256,58 @@ io.on('connection', (socket) => {
         socket.emit('handUpdated', { hand: result.hand });
     });
 
+    // Declare Kong (from discard)
+    socket.on('declareKong', (roomId, tileId) => {
+        const room = roomManager.getRoom(roomId);
+        if (!room || !room.game) {
+            socket.emit('error', { error: 'Game not found' });
+            return;
+        }
+
+        try {
+            const result = room.game.declareKong(socket.id, tileId);
+            if (result.error) {
+                socket.emit('error', result);
+                return;
+            }
+
+            // Broadcast kong to everyone so they can render the meld and remove the discard tile
+            io.to(roomId).emit('kongDeclared', {
+                playerId: socket.id,
+                meld: result.meld,
+                currentPlayer: result.currentPlayer,
+                currentPlayerName: result.currentPlayerName,
+                currentPlayerWind: result.currentPlayerWind,
+                fan: result.fan,
+                message: result.message
+            });
+
+            // Send updated hand to the kong player
+            socket.emit('handUpdated', { hand: result.hand });
+
+            // After an exposed kong we must draw from the back of the dummy wall for that player.
+            // Call the game drawTile for that player (server enforces turn logic).
+            try {
+                const drawResult = room.game.drawTile(socket.id);
+                // Send draw result only to the kong player (they need to discard)
+                socket.emit('tileDrawn', drawResult);
+
+                // Broadcast updated game state to everyone so clients can fully sync (optional but safer)
+                io.to(roomId).emit('gameStateUpdated', room.game.getGameState());
+            } catch (drawErr) {
+                console.error('Error drawing after kong:', drawErr);
+                // Inform the player (if any)
+                socket.emit('error', { error: drawErr.message || 'Draw after kong failed' });
+            }
+        } catch (err) {
+            console.error('Error handling declareKong:', err);
+            socket.emit('error', { error: 'declareKong failed' });
+        }
+    });
+
+
+
+
     // Declare Win
     socket.on('declareWin', (roomId) => {
         const room = roomManager.getRoom(roomId);

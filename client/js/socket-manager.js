@@ -118,7 +118,22 @@ class SocketManager {
                 this.gameManager.uiManager.showMessage('gameMessage', `${playerName} punged! +${data.fan || 0} fan`, 'info');
             }
         });
-        
+
+        this.socket.on('kongDeclared', (data) => {
+            console.log('SocketManager: kongDeclared', data);
+            try {
+                // Let the GameManager handle UI updates for melds, turn, etc.
+                if (this.gameManager && typeof this.gameManager.onKongDeclared === 'function') {
+                    this.gameManager.onKongDeclared(data);
+                } else {
+                    console.warn('No gameManager.onKongDeclared handler registered');
+                }
+            } catch (e) {
+                console.error('Error processing kongDeclared:', e);
+            }
+        });        
+
+
         this.socket.on('handUpdated', (data) => {
             this.gameManager.setCurrentHand(data.hand);
             this.gameManager.uiManager.renderCurrentHand(data.hand);
@@ -172,12 +187,12 @@ class SocketManager {
 
     declareKong(roomId, tileId) {
         if (!this.socket) return;
-        this.socket.emit('gameAction', { action: 'declareKong', roomId, data: { tileId } }, (response) => {
+        this.socket.emit('declareKong', roomId, tileId, (response) => {
+            // optional ack handling if server sends callback; your server currently responds via events
             if (response && response.error) {
                 this.gameManager.uiManager.showMessage('gameMessage', response.error, 'error');
             } else {
-                console.log('declareKong response:', response);
-                // Optionally handle ack here (server returns result via callback)
+                console.log('declareKong ack:', response);
             }
         });
     }

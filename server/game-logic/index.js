@@ -83,7 +83,7 @@ class MalaysiaMahjong3P {
                 // { tile, poppedBonuses } where poppedBonuses are additional bonus tiles
                 // popped from the back during the search for a non-bonus tile.
                 if (this.wallManager.getDummyWallCount() > 0) {
-                    const { tile: replacement, poppedBonuses } = this.wallManager.drawFromDummyWall();
+                    const { tile: replacement, poppedBonuses } = this.wallManager.drawFromBack();
                     // Assign any popped bonuses to the same player (they belong to them)
                     if (poppedBonuses && poppedBonuses.length > 0) {
                         if (!player.bonusTiles) player.bonusTiles = [];
@@ -158,7 +158,7 @@ class MalaysiaMahjong3P {
         return gameState;
     }
     
-    drawTile(playerId) {
+    drawTile(playerId, fromBack = false) {
         console.log('Game: Player', playerId, 'attempting to draw');
         
         // Check if it's player's turn
@@ -179,7 +179,7 @@ class MalaysiaMahjong3P {
         
         try {
             // Draw from dummy wall: get replacement tile and any popped bonuses
-            const drawResult = this.wallManager.drawFromDummyWall();
+            const drawResult = fromBack ? this.wallManager.drawFromBack() : this.wallManager.drawFromFront();
             const tile = drawResult.tile;
             const poppedBonuses = drawResult.poppedBonuses || [];
             const player = this.turnManager.getPlayerById(playerId);
@@ -207,6 +207,7 @@ class MalaysiaMahjong3P {
                 tile: tile,
                 hand: player.hand,
                 bonusTiles: player.bonusTiles || [],
+                drawnBonusTiles: poppedBonuses,
                 dummyWallCount: this.wallManager.getDummyWallCount(),
                 message: `Drew ${tile.display}`
             };
@@ -270,7 +271,7 @@ class MalaysiaMahjong3P {
         };
     }
     
-    declarePung(playerId, tileId) {
+    declarePung(playerId, tileId, usedTileIds = null) {
         console.log('Game: Player', playerId, 'declaring pung for tile', tileId);
         
         const lastDiscard = this.wallManager.getLastDiscard();
@@ -283,60 +284,55 @@ class MalaysiaMahjong3P {
         
         const tileToPung = lastDiscard.tile;
         
-        // Check if player can pung (considering wild cards)
-        const matchingTiles = player.hand.filter(t => 
-            !t.isWild && t.type === tileToPung.type && t.value === tileToPung.value
-        );
-        
-        const wildCards = player.hand.filter(t => t.isWild);
-        const availableWilds = wildCards.length;
-        
-        // Check wild card declarations for this tile
-        const wildDeclarations = Array.from(this.wildCardDeclarations.entries())
-            .filter(([key, decl]) => key.startsWith(playerId))
-            .filter(([key, decl]) => 
-                decl.declaredAs.type === tileToPung.type && 
-                decl.declaredAs.value === tileToPung.value
-            );
-        
-        const totalAvailable = matchingTiles.length + availableWilds - wildDeclarations.length;
-        
-        if (totalAvailable < 2) {
-            return { error: 'Cannot form pung - need 2 matching tiles' };
-        }
-        
-        // Remove 2 matching tiles/wild cards
+        // Determine which tiles to remove
         const tilesToRemove = [];
         
-        // First remove actual matching tiles
-        for (let i = player.hand.length - 1; i >= 0 && tilesToRemove.length < 2; i--) {
-            const tile = player.hand[i];
-            if (!tile.isWild && tile.type === tileToPung.type && tile.value === tileToPung.value) {
-                tilesToRemove.push(player.hand.splice(i, 1)[0]);
+        if (Array.isArray(usedTileIds) && usedTileIds.length > 0) {
+            // Validate each id exists in player's hand
+            for (const id of usedTileIds) {
+                const idx = player.hand.findIndex(t => t.id === id);
+                if (idx === -1) return { error: 'Invalid usedTileIds: tile not in hand' };
+                const tile = player.hand[idx];
+                if (!tile.isWild && !(tile.type === tileToPung.type && tile.value === tileToPung.value)) {
+                    return { error: 'Invalid usedTileIds: non-wild tile does not match' };
+                }
+                tilesToRemove.push(player.hand.splice(idx, 1)[0]);
             }
-        }
-
-        
-        // Then use wild cards if needed
-        for (let i = player.hand.length - 1; i >= 0 && tilesToRemove.length < 2; i--) {
-            const tile = player.hand[i];
-            if (tile.isWild) {
-                // Check if this wild card is already declared for something else
-                const declarationKey = `${playerId}-${tile.id}`;
-                if (!this.wildCardDeclarations.has(declarationKey)) {
-                    tilesToRemove.push(player.hand.splice(i, 1)[0]);
-                    // Auto-declare this wild card as the pung tile
-                    this.wildCardDeclarations.set(declarationKey, {
-                        wildCard: tile,
-                        declaredAs: { type: tileToPung.type, value: tileToPung.value },
-                        playerId: playerId,
-                        timestamp: Date.now()
-                    });
+        } else {
+            // Greedy: remove up to 2 matching (prefer real tiles) then wilds
+            const matchingTiles = [];
+            const wilds = [];
+            for (let i = player.hand.length - 1; i >= 0; i--) {
+                const t = player.hand[i];
+                if (!t.isWild && t.type === tileToPung.type && t.value === tileToPung.value) {
+                    matchingTiles.push(player.hand.splice(i, 1)[0]);
                 }
             }
+            // If not enough, take wilds
+            for (let i = player.hand.length - 1; i >= 0 && (matchingTiles.length + wilds.length) < 2; i--) {
+                const t = player.hand[i];
+                if (t.isWild) {
+                    const removed = player.hand.splice(i, 1)[0];
+                    wilds.push(removed);
+                    // Auto-declare
+                    const declarationKey = `${playerId}-${removed.id}`;
+                    if (!this.wildCardDeclarations.has(declarationKey)) {
+                        this.wildCardDeclarations.set(declarationKey, {
+                            wildCard: removed,
+                            declaredAs: { type: tileToPung.type, value: tileToPung.value },
+                            playerId: playerId,
+                            timestamp: Date.now()
+                        });
+                    }
+                }
+            }
+            tilesToRemove.push(...matchingTiles, ...wilds);
         }
         
         if (tilesToRemove.length < 2) {
+            // Put back if failed
+            player.hand.push(...tilesToRemove);
+            player.hand = this.tileManager.sortHand(player.hand);
             return { error: 'Not enough matching tiles' };
         }
         
@@ -397,60 +393,19 @@ class MalaysiaMahjong3P {
 
         const tileToKong = lastDiscard.tile;
 
-        // Build candidate list of hand tiles with indices
-        const hand = player.hand.slice(); // copy
-        const candidates = hand.map(t => ({ id: t.id, isWild: !!t.isWild, type: t.type, value: t.value }));
+        // Strict Kong: Only exact matches, no wildcards allowed.
+        const matchingTiles = player.hand.filter(t => 
+            !t.isWild && t.type === tileToKong.type && t.value === tileToKong.value
+        );
 
-        // We'll search all combinations of up to 3 distinct hand tiles and check if they can represent the required tile(s)
-        // For a given combination, non-wild tiles must match tileToKong type/value.
-        const combinations = [];
-
-        // helper to add combination with a label
-        const addCombination = (ids) => {
-            // label e.g. "3x 2筒 (uses 1 wild)" - keep simple
-            const nonWildCount = ids.reduce((acc, id) => {
-                const t = hand.find(x => x.id === id);
-                return acc + (t && t.isWild ? 0 : 1);
-            }, 0);
-            const wildCount = ids.length - nonWildCount;
-            const label = `${ids.length} tiles (${nonWildCount} real, ${wildCount} wild)`;
-            combinations.push({ usedTileIds: ids, label });
-        };
-
-        // generate combinations (choose 1..3 tiles)
-        const n = candidates.length;
-        for (let a = 0; a < n; a++) {
-            for (let b = a + 1; b < n; b++) {
-                for (let c = b + 1; c < n; c++) {
-                    const combo = [candidates[a], candidates[b], candidates[c]];
-                    // check validity: every non-wild must match tileToKong type/value
-                    const ok = combo.every(t => t.isWild || (t.type === tileToKong.type && t.value === tileToKong.value));
-                    if (ok) addCombination([combo[0].id, combo[1].id, combo[2].id]);
-                }
-            }
-            // also consider pairs -> we can include combos of size 2 (if player wants to use 2 tiles + 1 wild)
-            for (let b = a + 1; b < n; b++) {
-                const combo = [candidates[a], candidates[b]];
-                const ok = combo.every(t => t.isWild || (t.type === tileToKong.type && t.value === tileToKong.value));
-                if (ok) addCombination([combo[0].id, combo[1].id]);
-            }
-            // singletons
-            const combo1 = [candidates[a]];
-            if (combo1.every(t => t.isWild || (t.type === tileToKong.type && t.value === tileToKong.value))) {
-                addCombination([combo1[0].id]);
-            }
-        }
-
-        // Deduplicate by tile id arrays (simple string key)
-        const unique = {};
         const results = [];
-        combinations.forEach(c => {
-            const key = c.usedTileIds.slice().sort().join(',');
-            if (!unique[key]) {
-                unique[key] = true;
-                results.push(c);
-            }
-        });
+        if (matchingTiles.length >= 3) {
+            // We take the first 3 matching tiles.
+            results.push({
+                usedTileIds: matchingTiles.slice(0, 3).map(t => t.id),
+                label: '3 matching tiles'
+            });
+        }
 
         return { options: results };
     }
@@ -463,13 +418,72 @@ class MalaysiaMahjong3P {
     declareKong(playerId, tileId, usedTileIds = null) {
         console.log('Game: Player', playerId, 'declaring kong for tile', tileId);
 
+        const player = this.turnManager.getPlayerById(playerId);
+        if (!player) return { error: 'Player not found' };
+
+        const currentPlayer = this.turnManager.getCurrentPlayer();
+        const isMyTurn = currentPlayer.id === playerId;
+
+        // --- SELF KONG (An Gang) Logic ---
+        if (isMyTurn) {
+            // 1. Find the tile in hand to identify type/value
+            const targetTile = player.hand.find(t => t.id === tileId);
+            if (!targetTile) return { error: 'Tile not in hand for self-kong' };
+
+            // 2. Check for 4 matching tiles (Strict: No Wilds)
+            const matchingTiles = player.hand.filter(t => 
+                !t.isWild && t.type === targetTile.type && t.value === targetTile.value
+            );
+
+            if (matchingTiles.length !== 4) {
+                return { error: 'Need 4 matching tiles for self-kong' };
+            }
+
+            // 3. Remove all 4
+            const tilesToRemove = [];
+            const idsToRemove = matchingTiles.map(t => t.id);
+            idsToRemove.forEach(id => {
+                const idx = player.hand.findIndex(t => t.id === id);
+                if (idx !== -1) tilesToRemove.push(player.hand.splice(idx, 1)[0]);
+            });
+
+            // 4. Create Meld
+            const meld = {
+                type: 'kong',
+                tiles: tilesToRemove,
+                fromPlayer: playerId, // Self
+                fromPlayerWind: player.seatWind,
+                isExposed: true, // An Gang is technically concealed, but we treat as meld
+                isConcealed: true,
+                usesWildCards: false
+            };
+            
+            if (!player.melds) player.melds = [];
+            player.melds.push(meld);
+
+            // 5. Return success (Caller will handle draw)
+            const fan = 2; // Kong base fan
+            const bonusFan = this.fanCalculator.calculateBonusFan(player);
+            const totalFan = fan + bonusFan;
+
+            return {
+                success: true,
+                meld: meld,
+                hand: player.hand,
+                currentPlayer: playerId,
+                currentPlayerName: player.name,
+                currentPlayerWind: player.seatWind,
+                fan: totalFan,
+                bonusFan: bonusFan,
+                message: `${player.name} declared Self-Kong (An Gang)!`
+            };
+        }
+
+        // --- MING KONG (From Discard) Logic ---
         const lastDiscard = this.wallManager.getLastDiscard();
         if (!lastDiscard || lastDiscard.tile.id !== tileId) {
             return { error: 'Invalid kong declaration' };
         }
-
-        const player = this.turnManager.getPlayerById(playerId);
-        if (!player) return { error: 'Player not found' };
 
         const tileToKong = lastDiscard.tile;
 
@@ -485,9 +499,15 @@ class MalaysiaMahjong3P {
                     return { error: 'Invalid usedTileIds: tile not in hand' };
                 }
                 const tile = player.hand[idx];
-                // Non-wild must match the kong tile
-                if (!tile.isWild && !(tile.type === tileToKong.type && tile.value === tileToKong.value)) {
-                    return { error: 'Invalid usedTileIds: non-wild tile does not match' };
+                
+                // STRICT CHECK: No wildcards allowed for Kong
+                if (tile.isWild) {
+                    return { error: 'Invalid usedTileIds: wildcards not allowed for Kong' };
+                }
+                
+                // Must match the kong tile
+                if (tile.type !== tileToKong.type || tile.value !== tileToKong.value) {
+                    return { error: 'Invalid usedTileIds: tile does not match' };
                 }
                 // Remove from hand and record
                 tilesToRemove.push(player.hand.splice(idx, 1)[0]);
@@ -498,46 +518,21 @@ class MalaysiaMahjong3P {
                 // But we require totalAvailable >= 3 earlier — server will validate below.
             }
         } else {
-            // Greedy: remove up to 3 matching (prefer real tiles) then wilds
-            const matchingTiles = [];
-            const wilds = [];
-            for (let i = player.hand.length - 1; i >= 0; i--) {
+            // Greedy: remove up to 3 matching tiles (NO WILDS)
+            for (let i = player.hand.length - 1; i >= 0 && tilesToRemove.length < 3; i--) {
                 const t = player.hand[i];
                 if (!t.isWild && t.type === tileToKong.type && t.value === tileToKong.value) {
-                    matchingTiles.push(player.hand.splice(i, 1)[0]);
+                    tilesToRemove.push(player.hand.splice(i, 1)[0]);
                 }
             }
-            // If not enough, take wilds
-            for (let i = player.hand.length - 1; i >= 0 && (matchingTiles.length + wilds.length) < 3; i--) {
-                const t = player.hand[i];
-                if (t.isWild) {
-                    const removed = player.hand.splice(i, 1)[0];
-                    wilds.push(removed);
-                    // mark declaration if needed (auto-declare)
-                    const declarationKey = `${playerId}-${removed.id}`;
-                    if (!this.wildCardDeclarations.has(declarationKey)) {
-                        this.wildCardDeclarations.set(declarationKey, {
-                            wildCard: removed,
-                            declaredAs: { type: tileToKong.type, value: tileToKong.value },
-                            playerId: playerId,
-                            timestamp: Date.now()
-                        });
-                    }
-                }
-            }
-            tilesToRemove.push(...matchingTiles, ...wilds);
         }
 
         // Re-check total availability (matching + wilds)
-        const realMatching = tilesToRemove.filter(t => !t.isWild).length;
-        const wildUsed = tilesToRemove.filter(t => t.isWild).length;
-        const totalAvailable = realMatching + wildUsed;
-
-        if (totalAvailable < 3) {
+        if (tilesToRemove.length < 3) {
             // Put removed tiles back into hand (reverse order)
             player.hand.push(...tilesToRemove);
             player.hand = this.tileManager.sortHand(player.hand);
-            return { error: 'Not enough matching tiles for kong' };
+            return { error: 'Not enough matching tiles for kong (wildcards not allowed)' };
         }
 
         // Build the kong meld (3 from hand + discarded tile)
@@ -548,7 +543,7 @@ class MalaysiaMahjong3P {
             fromPlayer: lastDiscard.playerId,
             fromPlayerWind: lastDiscard.playerWind,
             isExposed: true,
-            usesWildCards: tilesToRemove.some(t => t.isWild)
+            usesWildCards: false
         };
 
         // Add meld to player's melds

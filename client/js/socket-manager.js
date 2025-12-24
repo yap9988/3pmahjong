@@ -110,13 +110,7 @@ class SocketManager {
         });
         
         this.socket.on('pungDeclared', (data) => {
-            this.gameManager.turnManager.updateTurnState(data.currentPlayer);
-            if (data.playerId === this.gameManager.playerId) {
-                this.gameManager.uiManager.showMessage('gameMessage', `You punged! +${data.fan || 0} fan`, 'success');
-            } else {
-                const playerName = this.gameManager.uiManager.getPlayerName(data.playerId);
-                this.gameManager.uiManager.showMessage('gameMessage', `${playerName} punged! +${data.fan || 0} fan`, 'info');
-            }
+            this.gameManager.onPungDeclared(data);
         });
 
         this.socket.on('kongDeclared', (data) => {
@@ -152,8 +146,7 @@ class SocketManager {
 
 
         this.socket.on('handUpdated', (data) => {
-            this.gameManager.setCurrentHand(data.hand);
-            this.gameManager.uiManager.renderCurrentHand(data.hand);
+            this.gameManager.onHandUpdated(data);
         });
         
         this.socket.on('error', (data) => {

@@ -704,13 +704,7 @@ class UIManager {
             this.hidePungButton();
         };
         
-        this.showMessage('gameMessage', `You can PUNG ${tile.display || tile.value}! Click within 5 seconds.`, 'success');
-        
-        // Auto-hide after 5 seconds
-        setTimeout(() => {
-            this.hidePungButton();
-            this.showMessage('gameMessage', 'Pung opportunity passed.', 'info');
-        }, 5000);
+        this.showMessage('gameMessage', `You can PUNG ${tile.display || tile.value}!`, 'success');
     }
 
     showKongButton(tile, kongCallback) {
@@ -729,14 +723,7 @@ class UIManager {
             this._clearOpportunityTimeout();
         };
 
-        this.showMessage('gameMessage', `You can KONG ${tile.display || tile.value}! Click to choose within 5 seconds.`, 'success');
-
-        // Auto-hide after 5 seconds but store id so we can clear if player responds
-        this._oppTimeout = setTimeout(() => {
-            this.hideKongButton();
-            this.showMessage('gameMessage', 'Kong opportunity passed.', 'info');
-            this._oppTimeout = null;
-        }, 5000);
+        this.showMessage('gameMessage', `You can KONG ${tile.display || tile.value}!`, 'success');
     }
     
     hidePungButton() {
@@ -757,6 +744,14 @@ class UIManager {
             kongBtn.innerHTML = `<i class="fas fa-layer-group"></i> Kong!`;
         }
         this._clearOpportunityTimeout();
+    }
+
+    // Remove the last tile from the discard pile (used when a player takes a discard for Pung/Kong)
+    removeLastDiscardFromPile() {
+        const discardPile = document.getElementById('discardPile');
+        if (discardPile && discardPile.lastElementChild) {
+            discardPile.removeChild(discardPile.lastElementChild);
+        }
     }
 
     // Render a modal of choices for kong combinations. options = [{ usedTileIds, label }]

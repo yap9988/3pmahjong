@@ -19,6 +19,7 @@ class GameManager {
         this.currentHand = [];
         this.players = [];
         
+        this.canDiscard = false; // Track if player is allowed to discard
         this.initialize();
     }
     
@@ -111,6 +112,7 @@ class GameManager {
     discardTile(tileId) {
         if (this.roomId && tileId) {
             console.log('GameManager: Discarding tile', tileId);
+            this.canDiscard = false; // Prevent double discard
             this.socketManager.discardTile(this.roomId, tileId);
         }
     }
@@ -185,7 +187,11 @@ class GameManager {
 
         if (this.turnManager.isMyTurn) {
             // enable clicking tiles to discard (covers both normal draws and the dealer-first discard)
+            this.canDiscard = true;
             this.uiManager.makeTilesDiscardable(this.currentHand, (tileId) => this.discardTile(tileId));
+            
+            // Check for initial 4-card Kong (An Gang)
+            this.checkSelfKongOpportunity();
         }
 
         // --- Render bonus tiles for all players (labelled by player) ---
@@ -239,20 +245,23 @@ class GameManager {
         if (data.bonusTiles && Array.isArray(data.bonusTiles)) {
             // Ensure the client's bonus area for THIS player is updated
             this.uiManager.updateBonusTilesDisplay(this.playerId, data.bonusTiles || []);
-            if (data.bonusTiles.length > 0) {
-                const names = data.bonusTiles.map(t => t.display || t.chinese || t.id).join(', ');
-                this.uiManager.showMessage('gameMessage', `You received bonus tiles: ${names}. Click a tile to discard.`, 'success');
-            } else {
-                // Normal draw with no bonus popped
-                this.uiManager.showMessage('gameMessage', `You drew: ${data.tile ? data.tile.display : 'a tile'}. Click a tile to discard.`, 'info');
-            }
-        } else {
-            // Fallback: show tile name if provided
-            this.uiManager.showMessage('gameMessage', `You drew: ${data.tile ? data.tile.display : 'a tile'}. Click a tile to discard.`, 'info');
         }
 
+        // Construct message
+        let msg = `You drew: ${data.tile ? data.tile.display : 'a tile'}.`;
+        if (data.drawnBonusTiles && data.drawnBonusTiles.length > 0) {
+            const bonusNames = data.drawnBonusTiles.map(t => t.display).join(', ');
+            msg = `You drew ${bonusNames}, replaced with ${data.tile ? data.tile.display : 'a tile'}.`;
+        }
+        
+        this.uiManager.showMessage('gameMessage', `${msg} Click a tile to discard.`, 'info');
+
         // Make tiles discardable so the player can end their turn
+        this.canDiscard = true;
         this.uiManager.makeTilesDiscardable(this.currentHand, (tileId) => this.discardTile(tileId));
+        
+        // Check for Self Kong (An Gang) after drawing
+        this.checkSelfKongOpportunity();
     }
     
     // When a discard occurs, we already call checkKongOpportunity; if true request options
@@ -263,7 +272,14 @@ class GameManager {
 
         if (data.playerId === this.playerId) return;
 
-        // Pung (skip detailed now)...
+        // Check Pung Opportunity
+        if (this.checkPungOpportunity(data.tile, data.playerId)) {
+            this.uiManager.showPungButton(data.tile, () => {
+                this.declarePung(data.tile.id);
+            });
+        } else {
+            this.uiManager.hidePungButton();
+        }
 
         const canKong = this.checkKongOpportunity(data.tile, data.playerId);
         if (canKong) {
@@ -303,6 +319,35 @@ class GameManager {
         }
     }    
 
+    // Handler invoked when server broadcasts 'pungDeclared'
+    onPungDeclared(data) {
+        console.log('GameManager: onPungDeclared', data);
+        this.uiManager.addMeld(data.playerId, data.meld);
+        
+        // If the meld came from a discard (which Pung always does), remove it from the pile
+        if (data.meld && data.meld.fromPlayer !== data.playerId) {
+            this.uiManager.removeLastDiscardFromPile();
+        }
+
+        this.turnManager.updateTurnState(data.currentPlayer);
+
+        if (data.playerId === this.playerId) {
+            // Pung successful: Player must now discard a tile (no draw)
+            this.uiManager.showMessage('gameMessage', `You punged! Please discard a tile.`, 'success');
+
+            // Disable draw button (updateTurnState enables it by default if it's my turn)
+            const drawBtn = document.getElementById('drawTileBtn');
+            if (drawBtn) drawBtn.disabled = true;
+            
+            // Enable discarding immediately
+            this.canDiscard = true;
+            this.uiManager.makeTilesDiscardable(this.currentHand, (tileId) => this.discardTile(tileId));
+        } else {
+            const playerName = this.uiManager.getPlayerName(data.playerId);
+            this.uiManager.showMessage('gameMessage', `${playerName} punged!`, 'info');
+        }
+    }
+
     // Handler invoked when server broadcasts 'kongDeclared'
     onKongDeclared(data) {
         console.log('GameManager: onKongDeclared', data);
@@ -311,9 +356,15 @@ class GameManager {
         // Add meld visually
         this.uiManager.addMeld(data.playerId, data.meld);
 
+        // If the meld came from a discard (Ming Kong), remove it from the pile
+        if (data.meld && data.meld.fromPlayer !== data.playerId) {
+            this.uiManager.removeLastDiscardFromPile();
+        }
+
         // If I'm the one who declared, server will send handUpdated and later kongDraw
         if (data.playerId === this.playerId) {
             this.uiManager.showMessage('gameMessage', 'You declared KONG! Awaiting replacement draw...', 'success');
+            this.canDiscard = false; // Cannot discard until replacement draw
         } else {
             const playerName = this.uiManager.getPlayerName(data.playerId);
             this.uiManager.showMessage('gameMessage', `${playerName} declared KONG`, 'info');
@@ -355,7 +406,19 @@ class GameManager {
         this.uiManager.showMessage('gameMessage', `You konged — you drew ${tileName}. Please discard one tile.`, 'success');
 
         // Make tiles discardable so player can discard to finish their turn
+        this.canDiscard = true;
         this.uiManager.makeTilesDiscardable(this.currentHand, (tileId) => this.discardTile(tileId));
+    }
+
+    // Handler for handUpdated event
+    onHandUpdated(data) {
+        this.setCurrentHand(data.hand);
+        this.uiManager.renderCurrentHand(this.currentHand);
+
+        // If it's my turn and I'm supposed to discard (e.g. after Pung), re-enable listeners
+        if (this.turnManager.isMyTurn && this.canDiscard) {
+            this.uiManager.makeTilesDiscardable(this.currentHand, (tileId) => this.discardTile(tileId));
+        }
     }
     
     // Updated pung check: consider wild (fei) tiles in our hand
@@ -381,13 +444,31 @@ class GameManager {
         const matchingTiles = this.currentHand.filter(tile => 
             !tile.isWild && tile.type === discardedTile.type && tile.value === discardedTile.value
         );
-        const wildTiles = this.currentHand.filter(tile => tile.isWild);
 
-        const totalAvailable = matchingTiles.length + wildTiles.length;
-
-        return totalAvailable >= 3; // need 3 tiles in hand plus the discarded tile to kong
+        return matchingTiles.length >= 3; // need 3 exact matching tiles in hand plus the discarded tile to kong
     }
 
+    // Check for Self Kong (An Gang) - 4 identical tiles in hand
+    checkSelfKongOpportunity() {
+        if (!this.turnManager.isMyTurn) return;
+        
+        const counts = {};
+        this.currentHand.forEach(t => {
+            if (t.isWild) return; // Strict kong usually no wilds
+            const key = `${t.type}-${t.value}`;
+            if (!counts[key]) counts[key] = [];
+            counts[key].push(t);
+        });
+
+        for (const group of Object.values(counts)) {
+            if (group.length === 4) {
+                const tile = group[0];
+                this.uiManager.showKongButton(tile, () => {
+                    this.declareKong(tile.id);
+                });
+            }
+        }
+    }
 
 
     

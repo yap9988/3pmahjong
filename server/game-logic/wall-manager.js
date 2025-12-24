@@ -13,7 +13,7 @@ class WallManager {
     
     // Draw from the back of the dummy wall. Collect any bonus tiles popped
     // into poppedBonuses array and return the first non-bonus tile along with them.
-    drawFromDummyWall() {
+    drawFromBack() {
         if (this.dummyWall.length === 0) {
             throw new Error('No tiles left in dummy wall');
         }
@@ -35,6 +35,29 @@ class WallManager {
         if (!tile) {
             // No non-bonus tile available; return popped bonuses and null tile
             return { tile: null, poppedBonuses };
+        }
+
+        return { tile, poppedBonuses };
+    }
+
+    // Draw from the front (Normal draw). If bonus, replacement comes from BACK.
+    drawFromFront() {
+        if (this.dummyWall.length === 0) {
+            throw new Error('No tiles left in dummy wall');
+        }
+
+        const poppedBonuses = [];
+        let tile = this.dummyWall.shift();
+
+        // If popped tile is a bonus, collect it and keep popping from BACK until we find a non-bonus.
+        while (tile && tile.isBonus) {
+            poppedBonuses.push(tile);
+            console.log(`WallManager: Bonus tile ${tile.display} drawn from front, replacement from back`);
+            if (this.dummyWall.length === 0) {
+                tile = null;
+                break;
+            }
+            tile = this.dummyWall.pop();
         }
 
         return { tile, poppedBonuses };

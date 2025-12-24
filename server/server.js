@@ -196,13 +196,22 @@ io.on('connection', (socket) => {
         const room = roomManager.getRoom(roomId);
         if (!room || !room.game) return;
         
-        const result = room.game.drawTile(socket.id);
+        const result = room.game.drawTile(socket.id, false); // Normal draw from front
         if (result.error) {
             socket.emit('error', result);
             return;
         }
         
         socket.emit('tileDrawn', result);
+
+        // Broadcast bonus tiles update if any were drawn
+        if (result.drawnBonusTiles && result.drawnBonusTiles.length > 0) {
+            io.to(roomId).emit('bonusTilesUpdated', {
+                playerId: socket.id,
+                bonusTiles: result.bonusTiles
+            });
+        }
+
         socket.to(roomId).emit('playerDrewTile', {
             playerId: socket.id,
             dummyWallCount: result.dummyWallCount
@@ -234,11 +243,11 @@ io.on('connection', (socket) => {
 
     // Declare Pung
     socket.on('declarePung', (data) => {
-        const { roomId, tileId } = data;
+        const { roomId, tileId, usedTileIds } = data;
         const room = roomManager.getRoom(roomId);
         if (!room || !room.game) return;
         
-        const result = room.game.declarePung(socket.id, tileId);
+        const result = room.game.declarePung(socket.id, tileId, usedTileIds);
         if (result.error) {
             socket.emit('error', result);
             return;
@@ -313,7 +322,16 @@ io.on('connection', (socket) => {
 
             // Now draw for the kong player from the wall and send them the draw result
             try {
-                const drawResult = room.game.drawTile(socket.id);
+                const drawResult = room.game.drawTile(socket.id, true); // Kong replacement from back
+                
+                // Broadcast bonus tiles update if any were drawn during kong replacement
+                if (drawResult.drawnBonusTiles && drawResult.drawnBonusTiles.length > 0) {
+                    io.to(roomId).emit('bonusTilesUpdated', {
+                        playerId: socket.id,
+                        bonusTiles: drawResult.bonusTiles
+                    });
+                }
+
                 // give a kong-specific message
                 const kongDrawPayload = Object.assign({}, drawResult, {
                     kongOrigin: true,

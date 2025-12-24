@@ -131,23 +131,42 @@ class TileRenderer {
     }
 
     addSpecialIndicators(tileDiv, tile) {
-        // Remove colored badges/indicators for winds/dragons/wilds.
-        // If you want to show a subtle non-colored badge for some rules, add it here.
+        // Wild tile indicator (keeps tile visually distinct)
+        if (tile.isWild) {
+            const wildBadge = document.createElement('div');
+            wildBadge.style.position = 'absolute';
+            wildBadge.style.top = '2px';
+            wildBadge.style.right = '2px';
+            wildBadge.style.background = '#FFEB3B';
+            wildBadge.style.color = '#000';
+            wildBadge.style.fontSize = '10px';
+            wildBadge.style.padding = '1px 4px';
+            wildBadge.style.borderRadius = '3px';
+            wildBadge.textContent = 'W';
+            wildBadge.title = 'Wild tile (飛)';
+            if (tile.declaredAs && tile.declaredAs.value) {
+                wildBadge.title = `Declared as ${tile.declaredAs.value} ${tile.declaredAs.type}`;
+            }
+            tileDiv.appendChild(wildBadge);
+        }
+
+        // Bonus badge (keep small)
         if (tile.isBonus) {
             const bonusBadge = document.createElement('div');
             bonusBadge.style.position = 'absolute';
-            bonusBadge.style.top = '4px';
-            bonusBadge.style.left = '4px';
-            bonusBadge.style.background = 'rgba(255,255,255,0.9)';
+            bonusBadge.style.top = '2px';
+            bonusBadge.style.left = '2px';
+            bonusBadge.style.background = '#FFFFFF';
             bonusBadge.style.color = '#000';
             bonusBadge.style.fontSize = '10px';
             bonusBadge.style.padding = '1px 4px';
             bonusBadge.style.borderRadius = '3px';
-            //bonusBadge.textContent = 'B';
+            bonusBadge.textContent = 'B';
             bonusBadge.title = 'Bonus Tile';
             tileDiv.appendChild(bonusBadge);
         }
     }
+
 
     // Bonus tiles display (keeps small tiles consistent)
     createBonusTileDisplay(bonusTiles) {

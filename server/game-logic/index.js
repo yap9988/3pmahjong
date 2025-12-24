@@ -52,7 +52,7 @@ class MalaysiaMahjong3P {
 
         
         // 5. Initialize dummy wall
-        this.wallManager.initializeDummyWall(dummyWall);
+        //this.wallManager.initializeDummyWall(dummyWall);
         
         // 6. Set game state
         this.gameState = 'playing';
@@ -115,13 +115,27 @@ class MalaysiaMahjong3P {
         const hands = {};
         const bonusTiles = {};
         
+ 
+                
         this.turnManager.players.forEach(player => {
             if (player && player.id) {
-                hands[player.id] = player.hand || [];
-                bonusTiles[player.id] = player.bonusTiles || [];
+                const handCopy = (player.hand || []).map(tile => {
+                    if (tile.isWild) {
+                        const key = `${player.id}-${tile.id}`;
+                        if (this.wildCardDeclarations && this.wildCardDeclarations.has(key)) {
+                            const decl = this.wildCardDeclarations.get(key);
+                            return Object.assign({}, tile, { declaredAs: decl.declaredAs });
+                        }
+                    }
+                    return Object.assign({}, tile);
+                });
+
+                hands[player.id] = handCopy;
+                bonusTiles[player.id] = (player.bonusTiles || []).slice();
             }
         });
-        
+
+
         // Build game state object
         const gameState = {
             gameState: this.gameState,

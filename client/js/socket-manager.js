@@ -113,6 +113,10 @@ class SocketManager {
             this.gameManager.onPungDeclared(data);
         });
 
+        this.socket.on('chiDeclared', (data) => {
+            this.gameManager.onChiDeclared(data);
+        });
+
         this.socket.on('kongDeclared', (data) => {
             console.log('SocketManager: kongDeclared', data);
             try {
@@ -193,6 +197,10 @@ class SocketManager {
     
     declarePung(roomId, tileId) {
         this.socket.emit('declarePung', { roomId, tileId });
+    }
+
+    declareChi(roomId, tileId, usedTileIds) {
+        this.socket.emit('declareChi', { roomId, tileId, usedTileIds });
     }
 
     // Request kong options (server computes possible tile-id combinations)

@@ -376,6 +376,81 @@ class MalaysiaMahjong3P {
         };
     }
 
+    declareChi(playerId, tileId, usedTileIds) {
+        console.log('Game: Player', playerId, 'declaring chi for tile', tileId);
+
+        const lastDiscard = this.wallManager.getLastDiscard();
+        if (!lastDiscard || lastDiscard.tile.id !== tileId) {
+            return { error: 'Invalid chi declaration' };
+        }
+
+        const player = this.turnManager.getPlayerById(playerId);
+        if (!player) return { error: 'Player not found' };
+
+        // 1. Check if discarder is the "upper" player (previous player)
+        const playerIndex = this.turnManager.players.findIndex(p => p.id === playerId);
+        const discarderIndex = this.turnManager.players.findIndex(p => p.id === lastDiscard.playerId);
+        const expectedDiscarderIndex = (playerIndex - 1 + this.turnManager.players.length) % this.turnManager.players.length;
+
+        if (discarderIndex !== expectedDiscarderIndex) {
+            return { error: 'Can only Chi from the player before you' };
+        }
+
+        const tileToChi = lastDiscard.tile;
+        if (tileToChi.type !== 'dot') {
+            return { error: 'Can only Chi numeric tiles (Dots)' };
+        }
+
+        if (!usedTileIds || usedTileIds.length !== 2) {
+            return { error: 'Must provide exactly 2 tiles for Chi' };
+        }
+
+        // 2. Verify tiles in hand & Sequence
+        const tilesToRemove = [];
+        for (const id of usedTileIds) {
+            const idx = player.hand.findIndex(t => t.id === id);
+            if (idx === -1) return { error: 'Tile not in hand' };
+            tilesToRemove.push(player.hand[idx]);
+        }
+
+        const sequence = [...tilesToRemove, tileToChi].sort((a, b) => a.value - b.value);
+        if (!sequence.every(t => t.type === 'dot')) return { error: 'All tiles must be Dots' };
+        if (sequence[1].value !== sequence[0].value + 1 || sequence[2].value !== sequence[1].value + 1) {
+            return { error: 'Tiles do not form a sequence' };
+        }
+
+        // 3. Execute Chi
+        usedTileIds.forEach(id => {
+            const idx = player.hand.findIndex(t => t.id === id);
+            if (idx !== -1) player.hand.splice(idx, 1);
+        });
+
+        const meld = {
+            type: 'chi',
+            tiles: sequence,
+            fromPlayer: lastDiscard.playerId,
+            fromPlayerWind: lastDiscard.playerWind,
+            isExposed: true,
+            usesWildCards: false
+        };
+
+        if (!player.melds) player.melds = [];
+        player.melds.push(meld);
+
+        this.wallManager.removeLastDiscard();
+        this.turnManager.setCurrentPlayer(playerId);
+
+        return {
+            success: true,
+            meld: meld,
+            hand: player.hand,
+            currentPlayer: playerId,
+            currentPlayerName: player.name,
+            currentPlayerWind: player.seatWind,
+            fan: 0,
+            message: `${player.name} declared Chi!`
+        };
+    }
 
     /**
      * Returns all valid combinations (arrays of tileIds) that the player could use from their hand

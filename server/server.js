@@ -265,6 +265,27 @@ io.on('connection', (socket) => {
         socket.emit('handUpdated', { hand: result.hand });
     });
 
+    // Declare Chi
+    socket.on('declareChi', (data) => {
+        const { roomId, tileId, usedTileIds } = data;
+        const room = roomManager.getRoom(roomId);
+        if (!room || !room.game) return;
+
+        const result = room.game.declareChi(socket.id, tileId, usedTileIds);
+        if (result.error) {
+            socket.emit('error', result);
+            return;
+        }
+
+        io.to(roomId).emit('chiDeclared', {
+            playerId: socket.id,
+            meld: result.meld,
+            currentPlayer: result.currentPlayer,
+            message: result.message
+        });
+
+        socket.emit('handUpdated', { hand: result.hand });
+    });
 
     // Get possible kong options (combinations) for the caller for the given discarded tile
     socket.on('getKongOptions', (roomId, tileId, callback) => {

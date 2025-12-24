@@ -145,6 +145,9 @@ class UIManager {
                             <button id="pungBtn" class="btn btn-warning hidden">
                                 <i class="fas fa-layer-group"></i> Pung!
                             </button>
+                            <button id="chiBtn" class="btn btn-info hidden">
+                                <i class="fas fa-stream"></i> Chi!
+                            </button>
                             <button id="kongBtn" class="btn btn-secondary hidden">
                                 <i class="fas fa-layer-group"></i> Kong!
                             </button>
@@ -707,6 +710,24 @@ class UIManager {
         this.showMessage('gameMessage', `You can PUNG ${tile.display || tile.value}!`, 'success');
     }
 
+    showChiButton(tile, options, chiCallback) {
+        const chiBtn = document.getElementById('chiBtn');
+        if (!chiBtn) return;
+
+        chiBtn.classList.remove('hidden');
+        chiBtn.disabled = false;
+        chiBtn.innerHTML = `<i class="fas fa-stream"></i> Chi ${tile.display || tile.value}`;
+        
+        chiBtn.onclick = () => {
+            if (options.length === 1) {
+                chiCallback(options[0].tiles);
+            } else {
+                this.showChiOptionsModal(tile, options, chiCallback);
+            }
+            this.hideChiButton();
+        };
+    }
+
     showKongButton(tile, kongCallback) {
         const kongBtn = document.getElementById('kongBtn');
         if (!kongBtn) return;
@@ -732,6 +753,15 @@ class UIManager {
             pungBtn.classList.add('hidden');
             pungBtn.disabled = true;
             pungBtn.innerHTML = `<i class="fas fa-layer-group"></i> Pung`;
+        }
+    }
+
+    hideChiButton() {
+        const chiBtn = document.getElementById('chiBtn');
+        if (chiBtn) {
+            chiBtn.classList.add('hidden');
+            chiBtn.disabled = true;
+            chiBtn.innerHTML = `<i class="fas fa-stream"></i> Chi`;
         }
     }
 
@@ -819,6 +849,44 @@ class UIManager {
         cancel.style.cursor = 'pointer';
         cancel.onclick = () => modal.remove();
         modal.appendChild(cancel);
+
+        document.body.appendChild(modal);
+    }
+
+    showChiOptionsModal(tile, options, onSelect) {
+        const existing = document.querySelector('.chi-options-modal');
+        if (existing) existing.remove();
+
+        const modal = document.createElement('div');
+        modal.className = 'chi-options-modal';
+        modal.style.position = 'fixed';
+        modal.style.top = '50%';
+        modal.style.left = '50%';
+        modal.style.transform = 'translate(-50%, -50%)';
+        modal.style.background = 'rgba(0,0,0,0.95)';
+        modal.style.padding = '18px';
+        modal.style.borderRadius = '12px';
+        modal.style.zIndex = '2000';
+        modal.style.minWidth = '300px';
+        modal.style.color = '#fff';
+
+        const title = document.createElement('h3');
+        title.textContent = `Chi options for ${tile.display}`;
+        modal.appendChild(title);
+
+        options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.textContent = `Use ${opt.label}`;
+            btn.style.display = 'block';
+            btn.style.width = '100%';
+            btn.style.margin = '8px 0';
+            btn.style.padding = '10px';
+            btn.onclick = () => {
+                onSelect(opt.tiles);
+                modal.remove();
+            };
+            modal.appendChild(btn);
+        });
 
         document.body.appendChild(modal);
     }    

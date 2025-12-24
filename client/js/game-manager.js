@@ -124,6 +124,13 @@ class GameManager {
         }
     }
 
+    declareChi(tileId, usedTileIds) {
+        if (this.roomId && tileId && usedTileIds) {
+            console.log('GameManager: Declaring chi for tile', tileId);
+            this.socketManager.declareChi(this.roomId, tileId, usedTileIds);
+        }
+    }
+
     // Client action to declare kong — calls socketManager
     declareKong(tileId) {
         if (this.roomId && tileId) {
@@ -281,6 +288,17 @@ class GameManager {
             this.uiManager.hidePungButton();
         }
 
+        // Check Chi Opportunity
+        const chiOptions = this.checkChiOpportunity(data.tile, data.playerId);
+        if (chiOptions.length > 0) {
+            this.uiManager.showChiButton(data.tile, chiOptions, (selectedTiles) => {
+                const usedTileIds = selectedTiles.map(t => t.id);
+                this.declareChi(data.tile.id, usedTileIds);
+            });
+        } else {
+            this.uiManager.hideChiButton();
+        }
+
         const canKong = this.checkKongOpportunity(data.tile, data.playerId);
         if (canKong) {
             // Query server for possible combinations so player can choose
@@ -345,6 +363,31 @@ class GameManager {
         } else {
             const playerName = this.uiManager.getPlayerName(data.playerId);
             this.uiManager.showMessage('gameMessage', `${playerName} punged!`, 'info');
+        }
+    }
+
+    // Handler invoked when server broadcasts 'chiDeclared'
+    onChiDeclared(data) {
+        console.log('GameManager: onChiDeclared', data);
+        this.uiManager.addMeld(data.playerId, data.meld);
+        
+        if (data.meld && data.meld.fromPlayer !== data.playerId) {
+            this.uiManager.removeLastDiscardFromPile();
+        }
+
+        this.turnManager.updateTurnState(data.currentPlayer);
+
+        if (data.playerId === this.playerId) {
+            this.uiManager.showMessage('gameMessage', `You declared Chi! Please discard a tile.`, 'success');
+            
+            const drawBtn = document.getElementById('drawTileBtn');
+            if (drawBtn) drawBtn.disabled = true;
+            
+            this.canDiscard = true;
+            this.uiManager.makeTilesDiscardable(this.currentHand, (tileId) => this.discardTile(tileId));
+        } else {
+            const playerName = this.uiManager.getPlayerName(data.playerId);
+            this.uiManager.showMessage('gameMessage', `${playerName} declared Chi!`, 'info');
         }
     }
 
@@ -436,6 +479,46 @@ class GameManager {
         return totalAvailable >= 2; // need 2 tiles in hand plus the discarded tile to pung
     }
 
+    // Check Chi: Must be from upper player, must be Dot, must form sequence
+    checkChiOpportunity(discardedTile, fromPlayerId) {
+        // 1. Check if fromPlayerId is the one before me
+        const myIndex = this.players.findIndex(p => p.id === this.playerId);
+        const discarderIndex = this.players.findIndex(p => p.id === fromPlayerId);
+        
+        if (myIndex === -1 || discarderIndex === -1) return [];
+        
+        const expectedDiscarder = (myIndex - 1 + this.players.length) % this.players.length;
+        if (discarderIndex !== expectedDiscarder) return [];
+
+        // 2. Check type (Dots only)
+        if (discardedTile.type !== 'dot') return [];
+
+        // 3. Find combinations
+        const v = discardedTile.value;
+        const hand = this.currentHand.filter(t => t.type === 'dot' && !t.isWild);
+        const options = [];
+        const findVal = (val) => hand.find(t => t.value === val);
+
+        // [v-2, v-1, v]
+        if (v - 2 >= 1) {
+            const t1 = findVal(v - 2);
+            const t2 = findVal(v - 1);
+            if (t1 && t2) options.push({ tiles: [t1, t2], label: `${v-2}, ${v-1}` });
+        }
+        // [v-1, v, v+1]
+        if (v - 1 >= 1 && v + 1 <= 9) {
+            const t1 = findVal(v - 1);
+            const t2 = findVal(v + 1);
+            if (t1 && t2) options.push({ tiles: [t1, t2], label: `${v-1}, ${v+1}` });
+        }
+        // [v, v+1, v+2]
+        if (v + 2 <= 9) {
+            const t1 = findVal(v + 1);
+            const t2 = findVal(v + 2);
+            if (t1 && t2) options.push({ tiles: [t1, t2], label: `${v+1}, ${v+2}` });
+        }
+        return options;
+    }
 
     // New kong check: need 3 tiles in hand (matching + wilds) to combine with discarded tile
     checkKongOpportunity(discardedTile, fromPlayerId) {

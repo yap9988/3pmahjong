@@ -176,6 +176,44 @@ class TileManager {
         return shuffled;
     }
     
+    // DEBUG: Rig the deck to give players 3 or 4 identical tiles at start
+    rigTilesForTesting(tiles) {
+        console.log('DEBUG: Rigging tiles for testing (giving players 3/4 same tiles)...');
+        
+        // 1. Group tiles by identity (type + value)
+        const groups = {};
+        tiles.forEach(t => {
+            const key = `${t.type}-${t.value}`;
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(t);
+        });
+
+        // 2. Find groups that have at least 3 tiles
+        const candidates = Object.values(groups).filter(g => g.length >= 3);
+        
+        if (candidates.length < 3) {
+            console.log('DEBUG: Not enough sets to rig deck.');
+            return tiles;
+        }
+
+        // 3. Shuffle candidates to pick random sets each time
+        for (let i = candidates.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+        }
+
+        // 4. Pick top 3 sets (one for each player)
+        const set1 = candidates[0]; // For Player 1
+        const set2 = candidates[1]; // For Player 2
+        const set3 = candidates[2]; // For Player 3
+
+        // 5. Reconstruct deck: [Set1, Set2, Set3, ...Rest]
+        const riggedIds = new Set([...set1, ...set2, ...set3].map(t => t.id));
+        const remaining = tiles.filter(t => !riggedIds.has(t.id));
+
+        return [...set1, ...set2, ...set3, ...remaining];
+    }
+    
     setupMalaysian3PWalls(tiles) {
         // Malaysian 3P: Deal 4-4-4-1 pattern
         const playerTiles = [[], [], []];

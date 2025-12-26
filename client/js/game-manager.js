@@ -252,9 +252,14 @@ class GameManager {
         console.log('Game Won:', data);
         this.gameActive = false;
         
-        // Show simple alert for now to expose the win, then return to lobby
-        alert(`${data.message}\n\nClick OK to return to the room lobby and start the next game.`);
-        
+        // Show win modal with details and "Back to Room" button
+        this.uiManager.showWinModal(data, () => {
+            this.returnToRoom(data);
+        });
+    }
+
+    returnToRoom(data) {
+        this.uiManager.removeWinModal();
         // Return to room screen
         this.uiManager.showScreen('room');
         this.uiManager.showMessage('roomMessage', `Last game won by ${data.playerName}. Winner is now East!`, 'success');
@@ -318,7 +323,8 @@ class GameManager {
         // Update opponent hand count
         const p = this.players.find(pl => pl.id === data.playerId);
         if (p) {
-            p.handCount = (p.handCount || 0) + 1;
+            // Safely increment: default to 13 if undefined (standard starting hand)
+            p.handCount = (typeof p.handCount === 'number' ? p.handCount : 13) + 1;
             this.uiManager.updateGameDisplay({ dummyWallCount: data.dummyWallCount });
         }
     }
@@ -344,7 +350,7 @@ class GameManager {
         // Update hand count for discarder
         const p = this.players.find(pl => pl.id === data.playerId);
         if (p) {
-            p.handCount = (p.handCount || 0) - 1;
+            p.handCount = (typeof p.handCount === 'number' ? p.handCount : 13) - 1;
             // Force UI update for side hands
             this.uiManager.updateGameDisplay({ dummyWallCount: parseInt(document.getElementById('dummyWallCount').textContent) || 0 });
         }
@@ -405,7 +411,7 @@ class GameManager {
             if (!p.melds) p.melds = [];
             p.melds.push(data.meld);
             // Pung uses 2 tiles from hand (plus 1 discard)
-            p.handCount = (p.handCount || 0) - 2;
+            p.handCount = (typeof p.handCount === 'number' ? p.handCount : 13) - 2;
             
             // Refresh side hands
             this.uiManager.updateGameDisplay({ dummyWallCount: parseInt(document.getElementById('dummyWallCount').textContent) || 0 });
@@ -445,7 +451,7 @@ class GameManager {
             if (!p.melds) p.melds = [];
             p.melds.push(data.meld);
             // Chi uses 2 tiles from hand (plus 1 discard)
-            p.handCount = (p.handCount || 0) - 2;
+            p.handCount = (typeof p.handCount === 'number' ? p.handCount : 13) - 2;
             
             // Refresh side hands
             this.uiManager.updateGameDisplay({ dummyWallCount: parseInt(document.getElementById('dummyWallCount').textContent) || 0 });
@@ -480,12 +486,29 @@ class GameManager {
         // Add meld visually
         const p = this.players.find(pl => pl.id === data.playerId);
         if (p) {
+            // Determine deduction based on Kong type
+            let deduction = 3; // Default: Ming Kong (3 tiles from hand + discard)
+
+            // Check for Bu Gang (Add-on Kong): Promoting an existing Pung
+            // We look for an existing Pung in the player's local melds that matches the new Kong
+            const existingPungIndex = p.melds ? p.melds.findIndex(m => 
+                m.type === 'pung' && 
+                data.meld.tiles.length > 0 &&
+                m.tiles[0].type === data.meld.tiles[0].type && 
+                m.tiles[0].value === data.meld.tiles[0].value
+            ) : -1;
+
+            if (existingPungIndex !== -1) {
+                deduction = 1; // Bu Gang only uses 1 tile from hand
+                p.melds.splice(existingPungIndex, 1); // Remove the old Pung
+            } else if (data.meld && data.meld.isConcealed) {
+                deduction = 4; // An Gang (Self Kong) uses 4 tiles from hand
+            }
+
             if (!p.melds) p.melds = [];
             p.melds.push(data.meld);
             
-            // Update hand count: Ming Kong (-3), An Kong (-4)
-            const deduction = (data.meld && data.meld.isConcealed) ? 4 : 3;
-            p.handCount = (p.handCount || 0) - deduction;
+            p.handCount = (typeof p.handCount === 'number' ? p.handCount : 13) - deduction;
             
             // Refresh side hands
             this.uiManager.updateGameDisplay({ dummyWallCount: parseInt(document.getElementById('dummyWallCount').textContent) || 0 });
@@ -521,7 +544,7 @@ class GameManager {
             // Dan Fei moves 1 tile from hand to bonus
             const p = this.players.find(pl => pl.id === data.playerId);
             if (p) {
-                p.handCount = (p.handCount || 0) - 1;
+                p.handCount = (typeof p.handCount === 'number' ? p.handCount : 13) - 1;
                 this.uiManager.updateGameDisplay({ dummyWallCount: parseInt(document.getElementById('dummyWallCount').textContent) || 0 });
             }
             this.uiManager.renderPlayerMeldsAndBonus(data.playerId);

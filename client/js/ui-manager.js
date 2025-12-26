@@ -108,18 +108,18 @@ class UIManager {
                         <!-- Left Player (Previous/Upper) -->
                         <div id="player-left" style="position: absolute; left: 20px; top: 40%; transform: translateY(-50%); display: flex; flex-direction: row; align-items: center;">
                             <!-- Hand (Vertical/Hidden) -->
-                            <div id="hand-left" class="side-hand" style="display: flex; flex-direction: column; gap: -10px;"></div>
+                            <div id="hand-left" class="side-hand" style="display: flex; flex-direction: column;"></div>
                             <!-- Melds/Bonus (Rotated 90deg) -->
-                            <div id="melds-bonus-left" style="display: flex; flex-direction: column; gap: 5px; margin-left: 20px; transform: rotate(90deg);"></div>
+                            <div id="melds-bonus-left" style="display: flex; flex-direction: row; gap: 5px; margin-left: 20px; transform: rotate(90deg); transform-origin: left center;"></div>
                             <div id="name-left" style="position: absolute; top: -40px; left: 0; color: white; font-weight: bold; width: 150px;"></div>
                         </div>
 
                         <!-- Right Player (Next/Lower) -->
                         <div id="player-right" style="position: absolute; right: 20px; top: 40%; transform: translateY(-50%); display: flex; flex-direction: row-reverse; align-items: center;">
                             <!-- Hand (Vertical/Hidden) -->
-                            <div id="hand-right" class="side-hand" style="display: flex; flex-direction: column; gap: -10px;"></div>
+                            <div id="hand-right" class="side-hand" style="display: flex; flex-direction: column;"></div>
                             <!-- Melds/Bonus (Rotated -90deg) -->
-                            <div id="melds-bonus-right" style="display: flex; flex-direction: column; gap: 5px; margin-right: 20px; transform: rotate(-90deg);"></div>
+                            <div id="melds-bonus-right" style="display: flex; flex-direction: row; gap: 5px; margin-right: 20px; transform: rotate(-90deg); transform-origin: right center;"></div>
                             <div id="name-right" style="position: absolute; top: -40px; right: 0; color: white; font-weight: bold; width: 150px; text-align: right;"></div>
                         </div>
 
@@ -224,7 +224,7 @@ class UIManager {
         if (discardPile) discardPile.innerHTML = '';
         
         // Clear any open modals
-        const modals = document.querySelectorAll('.kong-options-modal, .chi-options-modal, .wild-card-declaration');
+        const modals = document.querySelectorAll('.kong-options-modal, .chi-options-modal, .wild-card-declaration, .win-modal');
         modals.forEach(el => el.remove());
         
         // Hide action buttons
@@ -542,6 +542,7 @@ class UIManager {
             const bonusDiv = this.tileRenderer.createBonusTileDisplay(bonusTiles);
             // Remove default margins for tight fit
             bonusDiv.style.margin = '0';
+            bonusDiv.style.flexWrap = 'nowrap'; // Ensure bonus tiles stay in the single line
             container.appendChild(bonusDiv);
         }
 
@@ -827,6 +828,127 @@ class UIManager {
 
         document.body.appendChild(modal);
     }    
+
+    showWinModal(data, onBackToRoom) {
+        const existing = document.querySelector('.win-modal');
+        if (existing) existing.remove();
+
+        const modal = document.createElement('div');
+        modal.className = 'win-modal';
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100%';
+        modal.style.height = '100%';
+        modal.style.background = 'rgba(0,0,0,0.85)';
+        modal.style.zIndex = '3000';
+        modal.style.display = 'flex';
+        modal.style.flexDirection = 'column';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
+        modal.style.color = '#fff';
+
+        const container = document.createElement('div');
+        container.style.background = '#333';
+        container.style.padding = '30px';
+        container.style.borderRadius = '15px';
+        container.style.textAlign = 'center';
+        container.style.maxWidth = '90%';
+        container.style.border = '2px solid #FFD700';
+
+        const title = document.createElement('h1');
+        title.textContent = `🏆 ${data.playerName} Wins!`;
+        title.style.color = '#FFD700';
+        title.style.marginBottom = '10px';
+        container.appendChild(title);
+
+        const info = document.createElement('p');
+        info.textContent = `${data.message} (Fan: ${data.fan})`;
+        info.style.fontSize = '1.2em';
+        info.style.marginBottom = '20px';
+        container.appendChild(info);
+
+        // Main container for tiles (Green background)
+        const tilesContainer = document.createElement('div');
+        tilesContainer.style.display = 'flex';
+        tilesContainer.style.flexDirection = 'column';
+        tilesContainer.style.alignItems = 'center';
+        tilesContainer.style.gap = '15px';
+        tilesContainer.style.marginBottom = '30px';
+        tilesContainer.style.padding = '20px';
+        tilesContainer.style.background = '#2e7d32';
+        tilesContainer.style.borderRadius = '10px';
+
+        // --- Top Row: Bonus Tiles & Melds ---
+        const topRow = document.createElement('div');
+        topRow.style.display = 'flex';
+        topRow.style.flexWrap = 'wrap';
+        topRow.style.justifyContent = 'center';
+        topRow.style.gap = '20px';
+        topRow.style.alignItems = 'center';
+
+        // 1. Bonus Tiles
+        if (data.bonusTiles && data.bonusTiles.length > 0) {
+            const bonusDiv = this.tileRenderer.createBonusTileDisplay(data.bonusTiles);
+            bonusDiv.style.margin = '0'; // Reset default margin
+            topRow.appendChild(bonusDiv);
+        }
+
+        // 2. Melds
+        if (data.melds && data.melds.length > 0) {
+            const meldsDiv = document.createElement('div');
+            meldsDiv.style.display = 'flex';
+            meldsDiv.style.gap = '10px';
+
+            data.melds.forEach(meld => {
+                const meldGroup = document.createElement('div');
+                meldGroup.style.display = 'flex';
+                meldGroup.style.gap = '0';
+
+                meld.tiles.forEach(tile => {
+                    const el = this.tileRenderer.createTileElement(tile);
+                    el.style.margin = '0';
+                    meldGroup.appendChild(el);
+                });
+                meldsDiv.appendChild(meldGroup);
+            });
+            topRow.appendChild(meldsDiv);
+        }
+
+        if (topRow.children.length > 0) {
+            tilesContainer.appendChild(topRow);
+        }
+
+        // --- Bottom Row: Hand Tiles ---
+        const handRow = document.createElement('div');
+        handRow.style.display = 'flex';
+        handRow.style.flexWrap = 'wrap';
+        handRow.style.justifyContent = 'center';
+        
+        if (data.hand && data.hand.length > 0) {
+            data.hand.forEach(tile => {
+                const el = this.tileRenderer.createTileElement(tile, true);
+                handRow.appendChild(el);
+            });
+        }
+        tilesContainer.appendChild(handRow);
+
+        container.appendChild(tilesContainer);
+
+        const backBtn = document.createElement('button');
+        backBtn.className = 'btn btn-primary';
+        backBtn.innerHTML = '<i class="fas fa-home"></i> Back to Room';
+        backBtn.onclick = onBackToRoom;
+        container.appendChild(backBtn);
+
+        modal.appendChild(container);
+        document.body.appendChild(modal);
+    }
+
+    removeWinModal() {
+        const modal = document.querySelector('.win-modal');
+        if (modal) modal.remove();
+    }
 
     // Helper methods
     setElementText(elementId, text) {

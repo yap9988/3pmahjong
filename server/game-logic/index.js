@@ -29,7 +29,16 @@ class MalaysiaMahjong3P {
         
         // 2. Generate and shuffle tiles
         const allTiles = this.tileManager.generateTileSet();
-        const shuffledTiles = this.tileManager.shuffleTiles(allTiles);
+
+        //TESTINGMODE - START
+        //PROD
+        //const shuffledTiles = this.tileManager.shuffleTiles(allTiles);
+
+        //UAT
+        let shuffledTiles = this.tileManager.shuffleTiles(allTiles);
+        shuffledTiles = this.tileManager.rigTilesForTesting(shuffledTiles);
+
+        //TESTINGMODE - END
         
         // 3. Setup walls and deal (Malaysian 3P: 4-4-4-1 pattern)
         const { playerTiles, dummyWall } = this.tileManager.setupMalaysian3PWalls(shuffledTiles);
@@ -173,7 +182,7 @@ class MalaysiaMahjong3P {
 
         // Prevent East from drawing on firstTurn (East already has 14; must discard)
         const currentPlayer = this.turnManager.getCurrentPlayer();
-        if (this.firstTurn && currentPlayer && currentPlayer.id === playerId) {
+        if (this.firstTurn && currentPlayer && currentPlayer.id === playerId && !fromBack) {
             return { error: 'First turn: dealer already has 14 tiles and must discard first' };
         }
         
@@ -544,19 +553,24 @@ class MalaysiaMahjong3P {
         const currentPlayer = this.turnManager.getCurrentPlayer();
         const isMyTurn = currentPlayer.id === playerId;
 
-        // --- SELF KONG (An Gang) Logic ---
-        if (isMyTurn) {
-            // 1. Find the tile in hand to identify type/value
-            const targetTile = player.hand.find(t => t.id === tileId);
-            if (!targetTile) return { error: 'Tile not in hand for self-kong' };
+        // 1. Check if the tile is in the player's hand (indicates Self Kong / Bu Gang)
+        const tileInHand = player.hand.find(t => t.id === tileId);
+
+        // --- SELF KONG (An Gang) / BU GANG Logic ---
+        if (tileInHand) {
+            if (!isMyTurn) {
+                return { error: 'Not your turn to declare Self Kong / Bu Gang' };
+            }
+
+            const targetTile = tileInHand;
 
             // --- BU GANG (Add-on Kong) Check ---
             // Check if player has a Pung of this tile
-            const pungMeldIndex = player.melds.findIndex(m => 
+            const pungMeldIndex = player.melds ? player.melds.findIndex(m => 
                 m.type === 'pung' && 
                 m.tiles[0].type === targetTile.type && 
                 m.tiles[0].value === targetTile.value
-            );
+            ) : -1;
 
             if (pungMeldIndex !== -1) {
                 // Execute Bu Gang
@@ -783,7 +797,13 @@ class MalaysiaMahjong3P {
         if (!player) return { error: 'Player not found' };
 
         const currentPlayer = this.turnManager.getCurrentPlayer();
-        const isSelfDraw = (currentPlayer.id === playerId);
+        let isSelfDraw = (currentPlayer.id === playerId);
+
+        // If it's my turn but I haven't drawn yet (hand count % 3 == 1),
+        // it means I am winning off the last discard (Hu), not Self-Draw.
+        if (isSelfDraw && (player.hand.length % 3 === 1)) {
+            isSelfDraw = false;
+        }
         
         let winType = 'Self-Draw (Zimo)';
         let winningTile = null;
@@ -819,6 +839,7 @@ class MalaysiaMahjong3P {
             message: `${player.name} wins! (${winType})`,
             hand: player.hand,
             melds: player.melds,
+            bonusTiles: player.bonusTiles || [],
             winningTile: winningTile,
             isSelfDraw: isSelfDraw
         };

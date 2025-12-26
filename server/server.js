@@ -138,25 +138,14 @@ io.on('connection', (socket) => {
         console.log('Game state to send:', {
             ...gameState,
             roomId,
-            players: room.players.map(p => ({
-                id: p.id,
-                name: p.name,
-                isHost: p.id === room.host,
-                seatWind: room.game.turnManager.getPlayerWind(p.id)
-            }))
+            // players comes from gameState now (includes handCount)
         });
 
         
         // Send game started event to all players
         io.to(roomId).emit('gameStarted', {
             ...gameState,
-            roomId,
-            players: room.players.map(p => ({
-                id: p.id,
-                name: p.name,
-                isHost: p.id === room.host,
-                seatWind: room.game.turnManager.getPlayerWind(p.id)
-            }))
+            roomId
         });
         
         broadcastRoomList(); // Room is now playing, remove from lobby list

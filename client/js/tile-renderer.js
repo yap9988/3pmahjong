@@ -201,21 +201,45 @@ class TileRenderer {
         const container = document.createElement('div');
         container.style.display = 'flex';
         container.style.flexDirection = 'column'; // Stack vertically for side view
+        container.style.alignItems = 'center'; // Fix: Prevent tiles from stretching horizontally
+        // Reset container sizing to prevent external CSS interference
+        container.style.width = 'auto';
+        container.style.height = 'auto';
 
         const imgPath = side === 'left' ? '/assets/tile_left.png' : '/assets/tile_right.png';
         
+        // Determine rotation to make tiles face center
+        const rotation = side === 'left' ? '90deg' : '-90deg';
+        
         for (let i = 0; i < count; i++) {
-            const img = document.createElement('img');
-            const sideWidth = 1.6; // vmin
-            const sideHeight = 3.2; // vmin
-            img.src = imgPath;
-            img.style.width = `${sideWidth}vmin`;
-            img.style.height = `${sideHeight}vmin`;
-            img.style.marginBottom = `-${sideHeight * 0.6}vmin`; // Stack effect
-            img.style.background = '#1565C0'; // Fallback color
-            img.style.borderRadius = '4px';
-            img.alt = 'tile back';
-            container.appendChild(img);
+            // Use div instead of img to prevent broken image icon layout issues
+            const tileDiv = document.createElement('div');
+            const sideWidth = 3.8; // vmin (Matched to baseSize)
+            const sideHeight = 5.32; // vmin (3.8 * 1.4 aspect ratio)
+            
+            tileDiv.style.width = `${sideWidth}vmin`;
+            tileDiv.style.height = `${sideHeight}vmin`;
+            
+            // Rotate the tile to face center
+            tileDiv.style.transform = `rotate(${rotation})`;
+            
+            // Only apply negative margin to stack tiles, not the last one
+            // Visual height is now sideWidth (1.6). Layout height is sideHeight (3.2).
+            // We need to pull them up by roughly (3.2 - 1.6) = 1.6 to stack them.
+            if (i < count - 1) {
+                tileDiv.style.marginBottom = `-3.5vmin`;
+            }
+            
+            tileDiv.style.flex = '0 0 auto';
+            tileDiv.style.backgroundColor = '#1565C0'; // Fallback color
+            tileDiv.style.backgroundImage = `url('${imgPath}')`;
+            tileDiv.style.backgroundSize = 'cover';
+            tileDiv.style.backgroundPosition = 'center';
+            tileDiv.style.borderRadius = '2px';
+            tileDiv.style.border = '1px solid rgba(0,0,0,0.2)';
+            tileDiv.style.boxSizing = 'border-box';
+            
+            container.appendChild(tileDiv);
         }
 
         return container;

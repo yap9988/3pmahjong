@@ -32,11 +32,11 @@ class MalaysiaMahjong3P {
 
         //TESTINGMODE - START
         //PROD
-        //const shuffledTiles = this.tileManager.shuffleTiles(allTiles);
+        const shuffledTiles = this.tileManager.shuffleTiles(allTiles);
 
         //UAT
-        let shuffledTiles = this.tileManager.shuffleTiles(allTiles);
-        shuffledTiles = this.tileManager.rigTilesForTesting(shuffledTiles);
+        //let shuffledTiles = this.tileManager.shuffleTiles(allTiles);
+        //shuffledTiles = this.tileManager.rigTilesForTesting(shuffledTiles);
 
         //TESTINGMODE - END
         

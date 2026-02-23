@@ -91,74 +91,64 @@ class UIManager {
             
             game: `
                 <div class="screen" id="game">
-                    <div id="game-table" style="position: relative; width: 100%; height: 100%; background: #2e7d32; overflow: hidden;">
-                        
+                    <div id="game-table">
+
                         <!-- Info Overlay -->
-                        <div style="position: absolute; top: 5px; left: 5px; color: white; background: rgba(0,0,0,0.6); padding: 6px 8px; border-radius: 5px; z-index: 10; font-size: 0.85em;">
+                        <div id="game-info">
                             <div>Room: <span id="gameRoomId">---</span></div>
                             <div>Wall: <span id="dummyWallCount">0</span> | Turn: <span id="currentTurn">---</span></div>
-                            <button id="endGameBtn" class="btn btn-sm btn-danger" style="margin-top:5px;">Exit</button>
+                            <button id="endGameBtn" class="btn btn-sm btn-danger" style="margin-top:4px;">Exit</button>
                         </div>
 
                         <!-- Center: Discards -->
-                        <div id="center-area" style="position: absolute; top: 42%; left: 50%; transform: translate(-50%, -50%); width: 55%; max-width: 500px; height: 38%; max-height: 350px; display: flex; justify-content: center; align-items: center;">
-                            <div id="discardPile" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; max-width: 95%; width: 100%;"></div>
+                        <div id="center-area">
+                            <div id="discardPile"></div>
                         </div>
 
-                        <!-- Left Player (Previous/Upper) -->
-                        <div id="player-left" style="position: absolute; left: 1%; top: 42%; transform: translateY(-50%); display: flex; flex-direction: row; align-items: flex-start; max-width: 20%; overflow: hidden;">
-                            <!-- Hand (Vertical/Hidden) -->
-                            <div id="hand-left" class="side-hand" style="display: flex; flex-direction: column;"></div>
-                            <!-- Melds/Bonus (Rotated 90deg) -->
-                            <div id="melds-bonus-left" style="display: flex; flex-direction: column; gap: 3px; margin-left: 8px;"></div>
-                            <div id="name-left" style="position: absolute; top: -22px; left: 0; color: white; font-weight: bold; font-size: 0.8em; white-space: nowrap;"></div>
+                        <!-- Left Player -->
+                        <div id="player-left">
+                            <div id="hand-left" class="side-hand"></div>
+                            <div id="melds-bonus-left" class="side-melds"></div>
+                            <div id="name-left" class="player-name-label"></div>
                         </div>
 
-                        <!-- Right Player (Next/Lower) -->
-                        <div id="player-right" style="position: absolute; right: 1%; top: 42%; transform: translateY(-50%); display: flex; flex-direction: row-reverse; align-items: flex-start; max-width: 20%; overflow: hidden;">
-                            <!-- Hand (Vertical/Hidden) -->
-                            <div id="hand-right" class="side-hand" style="display: flex; flex-direction: column;"></div>
-                            <!-- Melds/Bonus (Rotated -90deg) -->
-                            <div id="melds-bonus-right" style="display: flex; flex-direction: column; gap: 3px; margin-right: 8px;"></div>
-                            <div id="name-right" style="position: absolute; top: -22px; right: 0; color: white; font-weight: bold; font-size: 0.8em; white-space: nowrap; text-align: right;"></div>
+                        <!-- Right Player -->
+                        <div id="player-right">
+                            <div id="hand-right" class="side-hand"></div>
+                            <div id="melds-bonus-right" class="side-melds"></div>
+                            <div id="name-right" class="player-name-label"></div>
                         </div>
 
                         <!-- Me (Bottom) -->
-                        <div id="player-me" style="position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); width: 96%; display: flex; flex-direction: column; align-items: center;">
-                            <!-- Melds/Bonus -->
-                            <div id="melds-bonus-me" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-bottom: 8px;"></div>
-                            
-                            <!-- Hand -->
-                            <div id="currentHand" style="display: flex; justify-content: center; align-items: flex-end; flex-wrap: nowrap; width: 100%;">
-                                <!-- Tiles injected here -->
-                            </div>
-                            
-                            <div style="color: white; margin-top: 5px; font-weight: bold;">
-                                <span id="playerNameDisplay">You</span> (<span id="seatWindDisplay">-</span>)
+                        <div id="player-me">
+                            <div id="melds-bonus-me"></div>
+                            <div id="currentHand"></div>
+                            <div id="player-bottom-bar">
+                                <div id="player-me-info">
+                                    <span id="playerNameDisplay">You</span> (<span id="seatWindDisplay">-</span>)
+                                </div>
+                                <div id="game-controls">
+                                    <button id="drawTileBtn" class="btn btn-primary">
+                                        <i class="fas fa-hand-paper"></i> Draw Tile
+                                    </button>
+                                    <button id="pungBtn" class="btn btn-warning hidden">
+                                        <i class="fas fa-layer-group"></i> Pung!
+                                    </button>
+                                    <button id="chiBtn" class="btn btn-info hidden">
+                                        <i class="fas fa-stream"></i> Chi!
+                                    </button>
+                                    <button id="kongBtn" class="btn btn-secondary hidden">
+                                        <i class="fas fa-layer-group"></i> Kong!
+                                    </button>
+                                    <button id="winBtn" class="btn btn-success">
+                                        <i class="fas fa-trophy"></i> Declare Win
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="section">
-                        <div class="btn-container">
-                            <button id="drawTileBtn" class="btn btn-primary">
-                                <i class="fas fa-hand-paper"></i> Draw Tile
-                            </button>
-                            <button id="pungBtn" class="btn btn-warning hidden">
-                                <i class="fas fa-layer-group"></i> Pung!
-                            </button>
-                            <button id="chiBtn" class="btn btn-info hidden">
-                                <i class="fas fa-stream"></i> Chi!
-                            </button>
-                            <button id="kongBtn" class="btn btn-secondary hidden">
-                                <i class="fas fa-layer-group"></i> Kong!
-                            </button>
-                            <button id="winBtn" class="btn btn-success">
-                                <i class="fas fa-trophy"></i> Declare Win
-                            </button>
-                        </div>
-                        
-                        <div id="gameMessage" class="message message-info" style="margin-top: 20px;">
+
+                        <!-- Game Message -->
+                        <div id="gameMessage" class="message message-info">
                             Game ready. Waiting for start...
                         </div>
                     </div>
@@ -698,7 +688,7 @@ class UIManager {
         const discardPile = document.getElementById('discardPile');
         if (!discardPile) return;
         
-        const tileElement = this.tileRenderer.createTileElement(tile, false, 0.65);
+        const tileElement = this.tileRenderer.createTileElement(tile, false, 0.7);
         tileElement.style.margin = '1px';
         discardPile.appendChild(tileElement);
         

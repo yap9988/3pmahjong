@@ -1,3 +1,8 @@
+/* ================================================
+   Malaysian 3-Player Mahjong — Styles
+   ================================================ */
+
+/* --- Reset & Base --- */
 * {
     margin: 0;
     padding: 0;
@@ -9,9 +14,77 @@ body {
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
     color: white;
     min-height: 100vh;
+    min-height: 100dvh;
     padding: 20px;
+    -webkit-tap-highlight-color: transparent;
 }
 
+/* --- Buttons --- */
+.btn {
+    display: inline-block;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9em;
+    color: white;
+    background: #555;
+    transition: opacity 0.15s, transform 0.1s;
+    -webkit-user-select: none;
+    user-select: none;
+}
+.btn:active { opacity: 0.85; transform: scale(0.96); }
+.btn-primary   { background: #1976D2; }
+.btn-success   { background: #388E3C; }
+.btn-danger    { background: #D32F2F; }
+.btn-warning   { background: #F57C00; }
+.btn-info      { background: #0288D1; }
+.btn-secondary { background: #616161; }
+.btn-sm { padding: 5px 10px; font-size: 0.8em; }
+
+.btn-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 15px;
+}
+
+/* --- Forms --- */
+.form-group {
+    margin-bottom: 12px;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 600;
+    font-size: 0.9em;
+}
+.form-group input {
+    width: 100%;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.08);
+    color: white;
+    font-size: 1em;
+}
+
+/* --- Messages --- */
+.message {
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 0.9em;
+    text-align: center;
+    margin-top: 10px;
+}
+.message-info    { background: rgba(33,150,243,0.15);  color: #90caf9; }
+.message-success { background: rgba(76,175,80,0.15);   color: #a5d6a7; }
+.message-error   { background: rgba(244,67,54,0.15);   color: #ef9a9a; }
+.message-warning { background: rgba(255,152,0,0.15);   color: #ffcc80; }
+
+/* --- Screens (lobby / room shared container) --- */
 .screen {
     max-width: 800px;
     margin: 0 auto;
@@ -22,9 +95,358 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.2);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
+.screen h1, .screen h2, .screen h3 { margin-bottom: 10px; }
 
+.subtitle {
+    text-align: center;
+    color: #aaa;
+    margin-bottom: 20px;
+    font-size: 0.95em;
+}
+
+.section {
+    margin-top: 20px;
+    padding: 15px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 10px;
+}
+
+/* --- Player cards (room screen) --- */
+.player-card {
+    padding: 10px;
+    margin-bottom: 8px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 6px;
+}
+.host-badge {
+    background: #FF9800;
+    color: #000;
+    font-size: 0.75em;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: bold;
+    margin-left: 6px;
+}
+
+/* --- Utility --- */
 .hidden {
     display: none !important;
 }
 
-/* Add more styles as needed */
+
+/* ================================================
+   GAME SCREEN — Fullscreen Layout
+   ================================================ */
+
+/* Override .screen defaults: game fills entire viewport */
+#game {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    border: none !important;
+    background: #1b5e20 !important;
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+    overflow: hidden !important;
+    z-index: 100;
+}
+
+#game-table {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    width: 100% !important;
+    height: 100% !important;
+    background: radial-gradient(ellipse at center, #2e7d32 0%, #256427 60%, #1b5e20 100%) !important;
+    overflow: hidden !important;
+}
+
+
+/* --- Info Overlay (top-left) --- */
+#game-info {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.55);
+    padding: 5px 8px;
+    border-radius: 6px;
+    z-index: 10;
+    font-size: clamp(0.6rem, 1.4vmin, 0.8rem);
+    line-height: 1.4;
+}
+
+
+/* --- Center Discard Area ---
+   Positioned between side players, above the bottom player area.
+   Uses left/right/top/bottom so it never overlaps side players. */
+#center-area {
+    position: absolute !important;
+    top: 5% !important;
+    left: 14% !important;
+    right: 14% !important;
+    bottom: 34% !important;
+    width: auto !important;
+    height: auto !important;
+    max-width: none !important;
+    max-height: none !important;
+    transform: none !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    overflow: hidden;
+}
+
+#discardPile {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-content: center;
+    gap: 2px;
+    max-width: 100%;
+    max-height: 100%;
+    overflow: hidden;
+    padding: 4px;
+}
+
+
+/* --- Left Player ---
+   Fixed width on the left edge, vertically spanning the middle zone. */
+#player-left {
+    position: absolute !important;
+    left: 0 !important;
+    top: 5% !important;
+    bottom: 34% !important;
+    width: 13% !important;
+    max-width: none !important;
+    transform: none !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    overflow: hidden !important;
+    padding-left: 4px;
+}
+
+
+/* --- Right Player ---
+   Mirror of left player on the right edge. */
+#player-right {
+    position: absolute !important;
+    right: 0 !important;
+    left: auto !important;
+    top: 5% !important;
+    bottom: 34% !important;
+    width: 13% !important;
+    max-width: none !important;
+    transform: none !important;
+    display: flex !important;
+    flex-direction: row-reverse !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    overflow: hidden !important;
+    padding-right: 4px;
+}
+
+
+/* Side player sub-elements */
+.side-hand {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    max-height: 100%;
+    overflow: hidden;
+}
+
+.side-melds {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+    overflow: hidden;
+    flex-shrink: 1;
+    max-height: 100%;
+}
+
+#melds-bonus-left  { margin-left: 4px !important; }
+#melds-bonus-right { margin-right: 4px !important; }
+
+
+/* Player name labels (side players) */
+.player-name-label {
+    position: absolute !important;
+    top: -2px !important;
+    color: #fff !important;
+    font-weight: bold !important;
+    font-size: clamp(0.55rem, 1.2vmin, 0.75rem) !important;
+    white-space: nowrap !important;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+#name-left  { left: 4px !important; right: auto !important; }
+#name-right { right: 4px !important; left: auto !important; text-align: right; }
+
+
+/* --- Bottom Player (Me) ---
+   Full-width strip at the bottom of the game table. */
+#player-me {
+    position: absolute !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: auto !important;
+    transform: none !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    padding: 2px 2% 4px !important;
+    max-height: 33%;
+}
+
+#melds-bonus-me {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    margin-bottom: 4px !important;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+#currentHand {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: flex-end !important;
+    flex-wrap: nowrap !important;
+    width: 100% !important;
+    overflow: hidden;
+}
+
+
+/* Bottom bar: player name left, action buttons right */
+#player-bottom-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 2px 4px;
+    margin-top: 2px;
+}
+
+#player-me-info {
+    color: #fff;
+    font-weight: bold;
+    font-size: clamp(0.65rem, 1.4vmin, 0.85rem);
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    white-space: nowrap;
+}
+
+
+/* --- Game Controls (action buttons) --- */
+#game-controls {
+    display: flex;
+    gap: 4px;
+    flex-wrap: nowrap;
+    align-items: center;
+}
+
+#game-controls .btn {
+    padding: 6px 10px;
+    font-size: clamp(0.55rem, 1.2vmin, 0.75rem);
+    white-space: nowrap;
+    border-radius: 6px;
+}
+
+
+/* --- Game Message ---
+   Floating notification above the bottom player area. */
+#gameMessage {
+    position: absolute !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    bottom: 34% !important;
+    background: rgba(0, 0, 0, 0.75) !important;
+    color: #fff !important;
+    padding: 5px 14px !important;
+    border-radius: 6px !important;
+    font-size: clamp(0.6rem, 1.3vmin, 0.8rem) !important;
+    z-index: 15 !important;
+    max-width: 65% !important;
+    text-align: center !important;
+    pointer-events: none;
+    margin: 0 !important;
+}
+
+#gameMessage.message-info    { background: rgba(33,150,243,0.8) !important; }
+#gameMessage.message-success { background: rgba(76,175,80,0.8) !important; }
+#gameMessage.message-error   { background: rgba(244,67,54,0.8) !important; }
+#gameMessage.message-warning { background: rgba(255,152,0,0.8) !important; }
+
+
+/* Tile flex behavior — allow tiles to shrink in flex containers */
+.tile {
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+
+/* ================================================
+   RESPONSIVE BREAKPOINTS
+   ================================================ */
+
+/* Small phones (< 480px width) */
+@media (max-width: 480px) {
+    body { padding: 10px; }
+    .screen { padding: 15px; }
+
+    #player-left,
+    #player-right { width: 10% !important; }
+    #center-area  { left: 11% !important; right: 11% !important; }
+}
+
+/* Tablets — iPad, Android tablets (768px+) */
+@media (min-width: 768px) {
+    #player-left,
+    #player-right { width: 14% !important; }
+    #center-area  { left: 15% !important; right: 15% !important; }
+
+    #game-controls .btn {
+        padding: 8px 14px;
+        font-size: clamp(0.65rem, 1.3vmin, 0.85rem);
+    }
+}
+
+/* Large tablets / desktop (1024px+) */
+@media (min-width: 1024px) {
+    #player-left,
+    #player-right { width: 15% !important; }
+    #center-area  { left: 16% !important; right: 16% !important; }
+}
+
+/* Portrait orientation — give more vertical room to bottom player */
+@media (orientation: portrait) {
+    #center-area { top: 4% !important; bottom: 38% !important; }
+    #player-left,
+    #player-right { bottom: 38% !important; }
+    #player-me { max-height: 37%; }
+
+    #gameMessage { bottom: 38% !important; }
+}
+
+/* Landscape on short screens (phones rotated) */
+@media (orientation: landscape) and (max-height: 500px) {
+    #center-area { bottom: 38% !important; }
+    #player-left,
+    #player-right { bottom: 38% !important; }
+    #player-me { max-height: 38%; padding-bottom: 2px !important; }
+
+    #game-controls .btn { padding: 4px 8px; }
+    #gameMessage { bottom: 39% !important; }
+}

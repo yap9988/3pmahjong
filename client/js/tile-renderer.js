@@ -102,13 +102,14 @@ class TileRenderer {
 
     applyTileStyle(tileDiv, tile, scale = 1.0) {
         // Base container styles. Make sure there's NO padding which would shrink image space.
-        const baseSize = 5.5 * scale; // Base size in vmin, scaled for context
+        const baseSize = 6 * scale; // Base size in vmin (increased for better visibility on mobile)
         const aspectRatio = 1.4; // height / width
 
         tileDiv.style.display = 'inline-block';
         tileDiv.style.width = `${baseSize}vmin`;
         tileDiv.style.height = `${baseSize * aspectRatio}vmin`;
         tileDiv.style.margin = '0 1px'; // Tight spacing ("stick together")
+        tileDiv.style.flexShrink = '1'; // Allow tiles to shrink in flex containers
         tileDiv.style.minWidth = '0'; // Allow flex shrink in hand container
         tileDiv.style.padding = '0';     // important: no padding
         tileDiv.style.borderRadius = `${baseSize * 0.1}vmin`;

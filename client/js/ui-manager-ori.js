@@ -10,7 +10,7 @@ class UIManager {
             lobby: `
                 <div class="screen" id="lobby">
                     <h1><i class="fas fa-dice"></i> Malaysian 3-Player Mahjong</h1>
-                    <p class="subtitle">正宗马来西亚三人麻将 - 84 Tiles Only</p>
+                    <p class="subtitle">正宗马来西亚三人麻将 - 68 Tiles Only</p>
                     
                     <div class="section">
                         <h2><i class="fas fa-plus-circle"></i> Create New Room</h2>
@@ -91,45 +91,45 @@ class UIManager {
             
             game: `
                 <div class="screen" id="game">
-                    <div id="game-table" style="position: relative; width: 100%; height: 100%; background: #2e7d32; overflow: hidden;">
+                    <div id="game-table" style="position: relative; width: 100%; height: 90vh; background: #2e7d32; overflow: hidden; border-radius: 8px;">
                         
                         <!-- Info Overlay -->
-                        <div style="position: absolute; top: 5px; left: 5px; color: white; background: rgba(0,0,0,0.6); padding: 6px 8px; border-radius: 5px; z-index: 10; font-size: 0.85em;">
+                        <div style="position: absolute; top: 10px; left: 10px; color: white; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; z-index: 10;">
                             <div>Room: <span id="gameRoomId">---</span></div>
                             <div>Wall: <span id="dummyWallCount">0</span> | Turn: <span id="currentTurn">---</span></div>
                             <button id="endGameBtn" class="btn btn-sm btn-danger" style="margin-top:5px;">Exit</button>
                         </div>
 
                         <!-- Center: Discards -->
-                        <div id="center-area" style="position: absolute; top: 42%; left: 50%; transform: translate(-50%, -50%); width: 55%; max-width: 500px; height: 38%; max-height: 350px; display: flex; justify-content: center; align-items: center;">
-                            <div id="discardPile" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; max-width: 95%; width: 100%;"></div>
+                        <div id="center-area" style="position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); width: 400px; height: 300px; display: flex; justify-content: center; align-items: center;">
+                            <div id="discardPile" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; max-width: 360px;"></div>
                         </div>
 
                         <!-- Left Player (Previous/Upper) -->
-                        <div id="player-left" style="position: absolute; left: 1%; top: 42%; transform: translateY(-50%); display: flex; flex-direction: row; align-items: flex-start; max-width: 20%; overflow: hidden;">
+                        <div id="player-left" style="position: absolute; left: 20px; top: 40%; transform: translateY(-50%); display: flex; flex-direction: row; align-items: center;">
                             <!-- Hand (Vertical/Hidden) -->
                             <div id="hand-left" class="side-hand" style="display: flex; flex-direction: column;"></div>
                             <!-- Melds/Bonus (Rotated 90deg) -->
-                            <div id="melds-bonus-left" style="display: flex; flex-direction: column; gap: 3px; margin-left: 8px;"></div>
-                            <div id="name-left" style="position: absolute; top: -22px; left: 0; color: white; font-weight: bold; font-size: 0.8em; white-space: nowrap;"></div>
+                            <div id="melds-bonus-left" style="display: flex; flex-direction: row; gap: 5px; margin-left: 20px; transform: rotate(90deg); transform-origin: left center;"></div>
+                            <div id="name-left" style="position: absolute; top: -40px; left: 0; color: white; font-weight: bold; width: 150px;"></div>
                         </div>
 
                         <!-- Right Player (Next/Lower) -->
-                        <div id="player-right" style="position: absolute; right: 1%; top: 42%; transform: translateY(-50%); display: flex; flex-direction: row-reverse; align-items: flex-start; max-width: 20%; overflow: hidden;">
+                        <div id="player-right" style="position: absolute; right: 20px; top: 40%; transform: translateY(-50%); display: flex; flex-direction: row-reverse; align-items: center;">
                             <!-- Hand (Vertical/Hidden) -->
                             <div id="hand-right" class="side-hand" style="display: flex; flex-direction: column;"></div>
                             <!-- Melds/Bonus (Rotated -90deg) -->
-                            <div id="melds-bonus-right" style="display: flex; flex-direction: column; gap: 3px; margin-right: 8px;"></div>
-                            <div id="name-right" style="position: absolute; top: -22px; right: 0; color: white; font-weight: bold; font-size: 0.8em; white-space: nowrap; text-align: right;"></div>
+                            <div id="melds-bonus-right" style="display: flex; flex-direction: row; gap: 5px; margin-right: 20px; transform: rotate(-90deg); transform-origin: right center;"></div>
+                            <div id="name-right" style="position: absolute; top: -40px; right: 0; color: white; font-weight: bold; width: 150px; text-align: right;"></div>
                         </div>
 
                         <!-- Me (Bottom) -->
-                        <div id="player-me" style="position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); width: 96%; display: flex; flex-direction: column; align-items: center;">
+                        <div id="player-me" style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; display: flex; flex-direction: column; align-items: center;">
                             <!-- Melds/Bonus -->
-                            <div id="melds-bonus-me" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-bottom: 8px;"></div>
+                            <div id="melds-bonus-me" style="display: flex; gap: 10px; margin-bottom: 15px;"></div>
                             
                             <!-- Hand -->
-                            <div id="currentHand" style="display: flex; justify-content: center; align-items: flex-end; flex-wrap: nowrap; width: 100%;">
+                            <div id="currentHand" style="display: flex; justify-content: center; align-items: flex-end; height: 80px;">
                                 <!-- Tiles injected here -->
                             </div>
                             
@@ -537,16 +537,12 @@ class UIManager {
         const bonusTiles = this.gameManager.bonusTiles[playerId] || [];
         const melds = player ? (player.melds || []) : [];
 
-        // Use smaller tiles for side players to prevent overflow
-        const isSide = (position === 'left' || position === 'right');
-        const scale = isSide ? 0.5 : 0.8;
-
         // Render Bonus Tiles first
         if (bonusTiles.length > 0) {
-
-            const bonusDiv = this.tileRenderer.createBonusTileDisplay(bonusTiles, scale);
+            const bonusDiv = this.tileRenderer.createBonusTileDisplay(bonusTiles);
+            // Remove default margins for tight fit
             bonusDiv.style.margin = '0';
-            bonusDiv.style.flexWrap = 'nowrap';
+            bonusDiv.style.flexWrap = 'nowrap'; // Ensure bonus tiles stay in the single line
             container.appendChild(bonusDiv);
         }
 
@@ -555,12 +551,11 @@ class UIManager {
             const meldDiv = document.createElement('div');
             meldDiv.className = 'meld-group';
             meldDiv.style.display = 'flex';
-            meldDiv.style.gap = '0';
-            meldDiv.style.marginLeft = isSide ? '0' : '10px';
-            if (isSide) meldDiv.style.marginTop = '2px';
+            meldDiv.style.gap = '0'; // stick together
+            meldDiv.style.marginLeft = '10px'; // separate melds slightly
 
             meld.tiles.forEach(tile => {
-                const el = this.tileRenderer.createTileElement(tile, false, scale);
+                const el = this.tileRenderer.createTileElement(tile);
                 el.style.margin = '0';
                 meldDiv.appendChild(el);
             });
@@ -641,7 +636,7 @@ class UIManager {
         // Render drawn tile with gap
         if (drawnTile) {
             const spacer = document.createElement('div');
-            spacer.style.width = '2vmin';
+            spacer.style.width = '15px'; // Gap
             handContainer.appendChild(spacer);
 
             const tileElement = this.tileRenderer.createTileElement(drawnTile, true);
@@ -698,8 +693,8 @@ class UIManager {
         const discardPile = document.getElementById('discardPile');
         if (!discardPile) return;
         
-        const tileElement = this.tileRenderer.createTileElement(tile, false, 0.65);
-        tileElement.style.margin = '1px';
+        const tileElement = this.tileRenderer.createTileElement(tile);
+        tileElement.style.margin = '1px'; // Tighter discard pile
         discardPile.appendChild(tileElement);
         
         if (discardPile.children.length > 20) {
@@ -894,8 +889,8 @@ class UIManager {
 
         // 1. Bonus Tiles
         if (data.bonusTiles && data.bonusTiles.length > 0) {
-            const bonusDiv = this.tileRenderer.createBonusTileDisplay(data.bonusTiles, 0.85);
-            bonusDiv.style.margin = '0';
+            const bonusDiv = this.tileRenderer.createBonusTileDisplay(data.bonusTiles);
+            bonusDiv.style.margin = '0'; // Reset default margin
             topRow.appendChild(bonusDiv);
         }
 
@@ -911,7 +906,7 @@ class UIManager {
                 meldGroup.style.gap = '0';
 
                 meld.tiles.forEach(tile => {
-                    const el = this.tileRenderer.createTileElement(tile, false, 0.85);
+                    const el = this.tileRenderer.createTileElement(tile);
                     el.style.margin = '0';
                     meldGroup.appendChild(el);
                 });
@@ -932,7 +927,7 @@ class UIManager {
         
         if (data.hand && data.hand.length > 0) {
             data.hand.forEach(tile => {
-                const el = this.tileRenderer.createTileElement(tile, true, 0.9);
+                const el = this.tileRenderer.createTileElement(tile, true);
                 handRow.appendChild(el);
             });
         }

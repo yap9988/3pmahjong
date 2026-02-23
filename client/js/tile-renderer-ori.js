@@ -7,7 +7,7 @@
 
 class TileRenderer {
 
-    createTileElement(tile, isClickable = false, scale = 1.0) {
+    createTileElement(tile, isClickable = false) {
         const tileDiv = document.createElement('div');
         tileDiv.className = 'tile';
         tileDiv.dataset.id = tile.id;
@@ -19,7 +19,7 @@ class TileRenderer {
         tileDiv.title = tileName;
 
         // Apply styling based on tile type (container)
-        this.applyTileStyle(tileDiv, tile, scale);
+        this.applyTileStyle(tileDiv, tile);
 
         // Add content: use an <img> that fills the container. Border goes on the image (box-sizing:border-box)
         const img = document.createElement('img');
@@ -100,16 +100,15 @@ class TileRenderer {
         return `${tile.display} (${tile.chinese || ''})`;
     }
 
-    applyTileStyle(tileDiv, tile, scale = 1.0) {
+    applyTileStyle(tileDiv, tile) {
         // Base container styles. Make sure there's NO padding which would shrink image space.
-        const baseSize = 5.5 * scale; // Base size in vmin, scaled for context
+        const baseSize = 3.8; // Base size in vmin (viewport minimum) for hand tiles
         const aspectRatio = 1.4; // height / width
 
         tileDiv.style.display = 'inline-block';
         tileDiv.style.width = `${baseSize}vmin`;
         tileDiv.style.height = `${baseSize * aspectRatio}vmin`;
         tileDiv.style.margin = '0 1px'; // Tight spacing ("stick together")
-        tileDiv.style.minWidth = '0'; // Allow flex shrink in hand container
         tileDiv.style.padding = '0';     // important: no padding
         tileDiv.style.borderRadius = `${baseSize * 0.1}vmin`;
         tileDiv.style.boxSizing = 'border-box';
@@ -173,7 +172,7 @@ class TileRenderer {
 
 
     // Bonus tiles display (keeps small tiles consistent)
-    createBonusTileDisplay(bonusTiles, scale = 1.0) {
+    createBonusTileDisplay(bonusTiles) {
         const container = document.createElement('div');
         container.className = 'bonus-tiles-container';
         container.style.display = 'flex';
@@ -190,7 +189,7 @@ class TileRenderer {
         }
 
         bonusTiles.forEach(tile => {
-            const tileElement = this.createTileElement(tile, false, scale);
+            const tileElement = this.createTileElement(tile);
             container.appendChild(tileElement);
         });
 
@@ -215,8 +214,8 @@ class TileRenderer {
         for (let i = 0; i < count; i++) {
             // Use div instead of img to prevent broken image icon layout issues
             const tileDiv = document.createElement('div');
-            const sideWidth = 4.5; // vmin 
-            const sideHeight = sideWidth * 1.4; // vmin (aspect ratio)
+            const sideWidth = 3.8; // vmin (Matched to baseSize)
+            const sideHeight = 5.32; // vmin (3.8 * 1.4 aspect ratio)
             
             tileDiv.style.width = `${sideWidth}vmin`;
             tileDiv.style.height = `${sideHeight}vmin`;
@@ -228,7 +227,7 @@ class TileRenderer {
             // Visual height is now sideWidth (1.6). Layout height is sideHeight (3.2).
             // We need to pull them up by roughly (3.2 - 1.6) = 1.6 to stack them.
             if (i < count - 1) {
-                tileDiv.style.marginBottom = `-${sideHeight * 0.62}vmin`;
+                tileDiv.style.marginBottom = `-3.5vmin`;
             }
             
             tileDiv.style.flex = '0 0 auto';

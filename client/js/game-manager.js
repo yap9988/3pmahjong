@@ -404,7 +404,12 @@ class GameManager {
     // Handler invoked when server broadcasts 'pungDeclared'
     onPungDeclared(data) {
         console.log('GameManager: onPungDeclared', data);
-        
+
+        // Hide all action buttons — once any claim is made, other options are invalid
+        this.uiManager.hidePungButton();
+        this.uiManager.hideChiButton();
+        this.uiManager.hideKongButton();
+
         // Update local player state for melds
         const p = this.players.find(pl => pl.id === data.playerId);
         if (p) {
@@ -445,7 +450,12 @@ class GameManager {
     // Handler invoked when server broadcasts 'chiDeclared'
     onChiDeclared(data) {
         console.log('GameManager: onChiDeclared', data);
-        
+
+        // Hide all action buttons — once any claim is made, other options are invalid
+        this.uiManager.hidePungButton();
+        this.uiManager.hideChiButton();
+        this.uiManager.hideKongButton();
+
         const p = this.players.find(pl => pl.id === data.playerId);
         if (p) {
             if (!p.melds) p.melds = [];
@@ -482,6 +492,11 @@ class GameManager {
     onKongDeclared(data) {
         console.log('GameManager: onKongDeclared', data);
         if (!data) return;
+
+        // Hide all action buttons — once any claim is made, other options are invalid
+        this.uiManager.hidePungButton();
+        this.uiManager.hideChiButton();
+        this.uiManager.hideKongButton();
 
         // Add meld visually
         const p = this.players.find(pl => pl.id === data.playerId);

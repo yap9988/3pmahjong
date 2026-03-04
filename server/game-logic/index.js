@@ -356,7 +356,7 @@ class MalaysiaMahjong3P {
             // Greedy: remove up to 2 matching (prefer real tiles) then wilds
             const matchingTiles = [];
             const wilds = [];
-            for (let i = player.hand.length - 1; i >= 0; i--) {
+            for (let i = player.hand.length - 1; i >= 0 && matchingTiles.length < 2; i--) {
                 const t = player.hand[i];
                 if (!t.isWild && t.type === tileToPung.type && t.value === tileToPung.value) {
                     matchingTiles.push(player.hand.splice(i, 1)[0]);
